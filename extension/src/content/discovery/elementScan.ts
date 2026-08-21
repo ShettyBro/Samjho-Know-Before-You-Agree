@@ -127,7 +127,7 @@ function scanCheckboxes(root: ParentNode): CandidateDraft[] {
 
 function scanHeadings(root: ParentNode): CandidateDraft[] {
   const drafts: CandidateDraft[] = []
-  for (const heading of queryAll(root, 'h1, h2, h3, h4, h5, h6')) {
+  for (const heading of queryAll(root, 'h1, h2, h3, h4, h5, h6, summary')) {
     if (isSamjhoOwned(heading)) continue
     const text = heading.textContent ?? ''
     const signals = matchLabelText(text, 'heading')

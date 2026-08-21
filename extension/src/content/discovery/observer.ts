@@ -2,16 +2,18 @@ import { isSamjhoOwned } from '../../shared/dom'
 import type { CandidateSource, ConsentCandidate } from '../../shared/discoveryTypes'
 import { scanRoot } from './elementScan'
 import { CandidateRegistry } from './registry'
+import type { LiveCandidate } from './types'
 
 const DEBOUNCE_MS = 250
+const OBSERVED_ATTRIBUTES = ['class', 'style', 'hidden', 'aria-expanded', 'aria-hidden', 'open']
 
 export class DiscoveryEngine {
   private registry = new CandidateRegistry()
   private pendingRoots = new Set<Element>()
   private debounceTimer: ReturnType<typeof setTimeout> | undefined
-  private readonly onChange: (candidates: ConsentCandidate[]) => void
+  private readonly onChange: (candidates: ConsentCandidate[], live: LiveCandidate[]) => void
 
-  constructor(onChange: (candidates: ConsentCandidate[]) => void) {
+  constructor(onChange: (candidates: ConsentCandidate[], live: LiveCandidate[]) => void) {
     this.onChange = onChange
   }
 
@@ -19,7 +21,12 @@ export class DiscoveryEngine {
     this.runInitialScan()
 
     const observer = new MutationObserver((mutations) => this.handleMutations(mutations))
-    observer.observe(document.body, { childList: true, subtree: true })
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: OBSERVED_ATTRIBUTES,
+    })
 
     const scheduleNavigationRescan = () => {
       this.pendingRoots.add(document.body)
@@ -43,12 +50,19 @@ export class DiscoveryEngine {
 
   private runInitialScan(): void {
     const drafts = scanRoot(document.body)
-    if (this.registry.upsert(drafts, 'initialScan')) this.onChange(this.registry.list())
+    if (this.registry.upsert(drafts, 'initialScan')) this.emitChange()
   }
 
   private handleMutations(mutations: MutationRecord[]): void {
     let relevant = false
     for (const mutation of mutations) {
+      if (mutation.type === 'attributes') {
+        if (mutation.target instanceof Element && !isSamjhoOwned(mutation.target)) {
+          this.pendingRoots.add(mutation.target)
+          relevant = true
+        }
+        continue
+      }
       for (const node of mutation.addedNodes) {
         if (!(node instanceof Element) || isSamjhoOwned(node)) continue
         this.pendingRoots.add(node)
@@ -68,6 +82,10 @@ export class DiscoveryEngine {
     const roots = Array.from(this.pendingRoots)
     this.pendingRoots.clear()
     const drafts = roots.flatMap((root) => scanRoot(root))
-    if (this.registry.upsert(drafts, source)) this.onChange(this.registry.list())
+    if (this.registry.upsert(drafts, source)) this.emitChange()
+  }
+
+  private emitChange(): void {
+    this.onChange(this.registry.list(), this.registry.listLive())
   }
 }

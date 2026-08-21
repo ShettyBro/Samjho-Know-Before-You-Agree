@@ -1,5 +1,6 @@
 import { checkBackendHealth } from '../shared/backendClient'
 import type { ConsentCandidate } from '../shared/discoveryTypes'
+import type { AgreementExtractionResult } from '../shared/extractionTypes'
 import {
   extractRequestId,
   isKnownRequestPayloadType,
@@ -9,6 +10,7 @@ import {
 } from '../shared/messages'
 
 const latestCandidatesByTab = new Map<number, ConsentCandidate[]>()
+const latestExtractionsByTab = new Map<number, AgreementExtractionResult[]>()
 
 async function buildResponse(request: SamjhoRequest, tabId: number | undefined): Promise<SamjhoResponse> {
   const { requestId, payload } = request
@@ -49,13 +51,24 @@ async function buildResponse(request: SamjhoRequest, tabId: number | undefined):
     }
   }
 
-  if (tabId !== undefined) latestCandidatesByTab.set(tabId, payload.candidates)
-  console.log('[Samjho] discovery update', { tabId, candidates: payload.candidates })
+  if (payload.type === 'DISCOVERY_UPDATE') {
+    if (tabId !== undefined) latestCandidatesByTab.set(tabId, payload.candidates)
+    console.log('[Samjho] discovery update', { tabId, candidates: payload.candidates })
+    return {
+      kind: 'response',
+      requestId,
+      ok: true,
+      payload: { type: 'DISCOVERY_ACK', receivedCount: payload.candidates.length },
+    }
+  }
+
+  if (tabId !== undefined) latestExtractionsByTab.set(tabId, payload.results)
+  console.log('[Samjho] extraction update', { tabId, results: payload.results })
   return {
     kind: 'response',
     requestId,
     ok: true,
-    payload: { type: 'DISCOVERY_ACK', receivedCount: payload.candidates.length },
+    payload: { type: 'EXTRACTION_ACK', receivedCount: payload.results.length },
   }
 }
 

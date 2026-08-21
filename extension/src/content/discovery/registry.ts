@@ -61,4 +61,8 @@ export class CandidateRegistry {
   list(): ConsentCandidate[] {
     return Array.from(this.entries.values()).map(({ element: _element, ...candidate }) => candidate)
   }
+
+  listLive(): LiveCandidate[] {
+    return Array.from(this.entries.values())
+  }
 }
