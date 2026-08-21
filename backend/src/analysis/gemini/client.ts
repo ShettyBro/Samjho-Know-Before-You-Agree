@@ -1,36 +1,30 @@
 import { GoogleGenAI } from '@google/genai'
 import { env } from '../../config/env.js'
 import { ApiError } from '../errors.js'
+import { classifyGeminiError } from './errorClassification.js'
 import { buildSystemInstruction, buildUserContent } from './prompt.js'
 import { GEMINI_RESPONSE_SCHEMA } from './schema.js'
 import type { GeminiContentPayload } from './types.js'
 
 let client: GoogleGenAI | undefined
 
+const PROVIDER_UNAVAILABLE_MESSAGE = 'The analysis provider is temporarily unavailable.'
+
 export function assertGeminiConfigured(apiKey: string | undefined): void {
   if (!apiKey) {
-    throw new ApiError('PROVIDER_ERROR', 502, 'The analysis provider is not configured')
+    console.error('[Samjho] gemini provider error', {
+      provider: 'gemini',
+      model: env.gemini.model,
+      elapsedMs: 0,
+      category: 'CONFIGURATION_ERROR',
+    })
+    throw new ApiError('PROVIDER_ERROR', 502, PROVIDER_UNAVAILABLE_MESSAGE)
   }
 }
 
 export function mapGeminiError(error: unknown): ApiError {
   if (error instanceof ApiError) return error
-
-  const status = typeof error === 'object' && error !== null ? (error as { status?: unknown }).status : undefined
-
-  if (status === 401 || status === 403) {
-    return new ApiError('PROVIDER_ERROR', 502, 'The analysis provider rejected the request credentials')
-  }
-  if (status === 404) {
-    return new ApiError('PROVIDER_ERROR', 502, 'The configured analysis model is unavailable')
-  }
-  if (status === 429) {
-    return new ApiError('PROVIDER_ERROR', 502, 'The analysis provider is currently rate-limited')
-  }
-  if (error instanceof Error && /timeout|aborted|deadline/i.test(error.message)) {
-    return new ApiError('PROVIDER_ERROR', 502, 'The analysis provider did not respond in time')
-  }
-  return new ApiError('PROVIDER_ERROR', 502, 'The analysis provider failed to produce a result')
+  return new ApiError('PROVIDER_ERROR', 502, PROVIDER_UNAVAILABLE_MESSAGE)
 }
 
 function getClient(): GoogleGenAI {
@@ -41,6 +35,7 @@ function getClient(): GoogleGenAI {
 
 export async function requestChunkAnalysis(chunkText: string): Promise<GeminiContentPayload> {
   const ai = getClient()
+  const startedAt = Date.now()
 
   let response: Awaited<ReturnType<typeof ai.models.generateContent>>
   try {
@@ -60,15 +55,39 @@ export async function requestChunkAnalysis(chunkText: string): Promise<GeminiCon
       },
     })
   } catch (error) {
+    const classification = classifyGeminiError(error)
+    console.error('[Samjho] gemini provider error', {
+      provider: 'gemini',
+      model: env.gemini.model,
+      elapsedMs: Date.now() - startedAt,
+      category: classification.category,
+      httpStatus: classification.httpStatus,
+      providerCode: classification.providerCode,
+      requestId: classification.requestId,
+    })
     throw mapGeminiError(error)
   }
 
   const text = response.text
-  if (!text) throw new ApiError('PROVIDER_ERROR', 502, 'The analysis provider returned an empty response')
+  if (!text) {
+    console.error('[Samjho] gemini provider error', {
+      provider: 'gemini',
+      model: env.gemini.model,
+      elapsedMs: Date.now() - startedAt,
+      category: 'PROVIDER_ERROR',
+    })
+    throw new ApiError('PROVIDER_ERROR', 502, PROVIDER_UNAVAILABLE_MESSAGE)
+  }
 
   try {
     return JSON.parse(text) as GeminiContentPayload
   } catch {
+    console.error('[Samjho] gemini provider error', {
+      provider: 'gemini',
+      model: env.gemini.model,
+      elapsedMs: Date.now() - startedAt,
+      category: 'SCHEMA_ERROR',
+    })
     throw new ApiError('ANALYSIS_SCHEMA_ERROR', 502, 'The analysis provider returned a response that could not be parsed')
   }
 }

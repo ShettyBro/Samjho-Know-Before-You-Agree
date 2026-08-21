@@ -1,14 +1,11 @@
 export type GeminiSourceReferencePayload = {
-  headingPath: string[]
-  containerDescriptor: string
-  sourceIndex: number
+  sectionTitle: string
+  sourceIndex: string
 }
 
 export type GeminiAttentionItemPayload = {
-  id: string
   category: string
   importance: string
-  confidence: string
   title: string
   explanation: string
   sourceText: string
@@ -18,5 +15,4 @@ export type GeminiAttentionItemPayload = {
 export type GeminiContentPayload = {
   summary: string[]
   attentionItems: GeminiAttentionItemPayload[]
-  limitations: string[]
 }

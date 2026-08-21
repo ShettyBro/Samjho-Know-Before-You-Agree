@@ -8,7 +8,7 @@
     "build": "tsc -p tsconfig.json",
     "start": "node dist/index.js",
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.test.json",
-    "test": "node --import tsx --test src/analysis/*.test.ts src/analysis/gemini/*.test.ts"
+    "test": "node --import tsx --test src/analysis/*.test.ts src/analysis/gemini/*.test.ts src/cache/*.test.ts"
   },
   "dependencies": {
     "@google/genai": "^2.18.0",

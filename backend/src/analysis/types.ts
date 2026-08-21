@@ -34,6 +34,11 @@ export type AttentionCategory =
   | 'accountTermination'
   | 'obligations'
   | 'authorizationConsent'
+  | 'arbitration'
+  | 'liability'
+  | 'indemnification'
+  | 'governingLaw'
+  | 'deadline'
   | 'other'
 
 export type ImportanceLevel = 'high' | 'medium' | 'low'

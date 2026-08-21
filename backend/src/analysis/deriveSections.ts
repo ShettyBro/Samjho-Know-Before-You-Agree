@@ -2,12 +2,12 @@ import { MAX_SECTION_SUMMARY_POINTS } from './limits.js'
 import type { AnalysisSection } from './types.js'
 
 export const SECTION_CATEGORY_MAP: Record<string, string[]> = {
-  obligations: ['obligations', 'authorizationConsent'],
+  obligations: ['obligations', 'authorizationConsent', 'liability', 'indemnification', 'deadline'],
   charges: ['fees', 'recurringCharges'],
   renewals: ['autoRenewal'],
   cancellation: ['cancellation', 'refundRestrictions'],
   dataSharing: ['dataCollection', 'dataSharing', 'thirdParties'],
-  disputeResolution: ['disputeResolution'],
+  disputeResolution: ['disputeResolution', 'arbitration', 'governingLaw'],
 }
 
 type DerivableItem = { id: string; category: string; explanation: string }

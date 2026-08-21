@@ -25,7 +25,6 @@ function payloadWithItems(items: GeminiContentPayload['attentionItems']): Gemini
   return {
     summary: ['This agreement includes an auto-renewal clause.'],
     attentionItems: items,
-    limitations: [],
   }
 }
 
@@ -42,20 +41,19 @@ test('a structured, well-formed Gemini response passes M06 response validation',
   const provider = createGeminiProvider(async () =>
     payloadWithItems([
       {
-        id: 'a',
         category: 'autoRenewal',
         importance: 'high',
-        confidence: 'high',
         title: 'Automatic renewal',
         explanation: 'The subscription renews automatically each month.',
         sourceText: 'Your subscription renews automatically each month.',
-        sourceReference: { headingPath: [], containerDescriptor: 'paragraph', sourceIndex: 0 },
+        sourceReference: { sectionTitle: '', sourceIndex: '0' },
       },
     ]),
   )
   const raw = await provider.analyze(request)
   const result = validateAnalysisResult(raw, context)
   assert.equal(result.ok, true)
+  if (result.ok) assert.equal(result.value.attentionItems[0].confidence, 'high')
 })
 
 test('the six analysis sections are derived from attention items rather than requested from the model', async () => {
@@ -63,14 +61,12 @@ test('the six analysis sections are derived from attention items rather than req
   const provider = createGeminiProvider(async () =>
     payloadWithItems([
       {
-        id: 'a',
         category: 'autoRenewal',
         importance: 'high',
-        confidence: 'high',
         title: 'Automatic renewal',
         explanation: 'The subscription renews automatically each month.',
         sourceText: 'Your subscription renews automatically each month.',
-        sourceReference: { headingPath: [], containerDescriptor: 'paragraph', sourceIndex: 0 },
+        sourceReference: { sectionTitle: '', sourceIndex: '0' },
       },
     ]),
   )
@@ -97,28 +93,24 @@ test('a fabricated finding not grounded in the source text is dropped and disclo
   const provider = createGeminiProvider(async () =>
     payloadWithItems([
       {
-        id: 'real',
         category: 'cancellation',
         importance: 'medium',
-        confidence: 'medium',
         title: 'Cancellation',
         explanation: 'You can cancel from account settings.',
         sourceText: 'You may cancel at any time from account settings.',
-        sourceReference: { headingPath: [], containerDescriptor: 'paragraph', sourceIndex: 1 },
+        sourceReference: { sectionTitle: '', sourceIndex: '1' },
       },
       {
-        id: 'fabricated',
         category: 'fees',
         importance: 'high',
-        confidence: 'high',
         title: 'Cancellation fee',
         explanation: 'A $500 penalty applies.',
         sourceText: 'A five hundred dollar cancellation penalty applies immediately.',
-        sourceReference: { headingPath: [], containerDescriptor: 'paragraph', sourceIndex: 1 },
+        sourceReference: { sectionTitle: '', sourceIndex: '1' },
       },
     ]),
   )
-  const raw = (await provider.analyze(request)) as GeminiContentPayload
+  const raw = (await provider.analyze(request)) as unknown as { attentionItems: { title: string }[]; limitations: string[] }
   assert.equal(raw.attentionItems.length, 1)
   assert.equal(raw.attentionItems[0].title, 'Cancellation')
   assert.ok(raw.limitations.some((entry) => entry.includes('could not be verified')))
@@ -132,18 +124,18 @@ test('a long document is chunked and the analyzer is invoked more than once with
     callCount += 1
     return payloadWithItems([
       {
-        id: `item-${callCount}`,
         category: 'obligations',
         importance: 'low',
-        confidence: 'low',
         title: 'Obligation',
         explanation: 'General obligation clause.',
         sourceText: chunkText.slice(0, 30),
-        sourceReference: { headingPath: [], containerDescriptor: 'paragraph', sourceIndex: 0 },
+        sourceReference: { sectionTitle: '', sourceIndex: '0' },
       },
     ])
   })
-  const raw = (await provider.analyze(baseRequest({ normalizedText: longText, originalText: longText }))) as GeminiContentPayload
+  const raw = (await provider.analyze(baseRequest({ normalizedText: longText, originalText: longText }))) as unknown as {
+    attentionItems: unknown[]
+  }
   assert.ok(callCount > 1)
   assert.ok(raw.attentionItems.length <= 40)
 })
@@ -153,73 +145,84 @@ test('multiple distinct clauses in one agreement are each identified as separate
     normalizedText:
       'A recurring monthly fee applies.\n\nThe subscription renews automatically unless cancelled.\n\nData is shared with third-party partners.\n\nCancellation requires 30 days notice.',
   })
-  const provider = createGeminiProvider(async (chunkText) =>
+  const provider = createGeminiProvider(async () =>
     payloadWithItems([
       {
-        id: 'charge',
         category: 'recurringCharges',
         importance: 'high',
-        confidence: 'high',
         title: 'Recurring charge',
         explanation: 'A recurring fee applies.',
         sourceText: 'A recurring monthly fee applies.',
-        sourceReference: { headingPath: [], containerDescriptor: 'paragraph', sourceIndex: 0 },
+        sourceReference: { sectionTitle: '', sourceIndex: '0' },
       },
       {
-        id: 'renewal',
         category: 'autoRenewal',
         importance: 'high',
-        confidence: 'high',
         title: 'Auto-renewal',
         explanation: 'Renews automatically.',
         sourceText: 'The subscription renews automatically unless cancelled.',
-        sourceReference: { headingPath: [], containerDescriptor: 'paragraph', sourceIndex: 1 },
+        sourceReference: { sectionTitle: '', sourceIndex: '1' },
       },
       {
-        id: 'sharing',
         category: 'dataSharing',
         importance: 'medium',
-        confidence: 'medium',
         title: 'Data sharing',
         explanation: 'Data is shared with partners.',
         sourceText: 'Data is shared with third-party partners.',
-        sourceReference: { headingPath: [], containerDescriptor: 'paragraph', sourceIndex: 2 },
+        sourceReference: { sectionTitle: '', sourceIndex: '2' },
       },
       {
-        id: 'cancel',
         category: 'cancellation',
         importance: 'medium',
-        confidence: 'medium',
         title: 'Cancellation notice',
         explanation: 'Requires 30 days notice.',
         sourceText: 'Cancellation requires 30 days notice.',
-        sourceReference: { headingPath: [], containerDescriptor: 'paragraph', sourceIndex: 3 },
+        sourceReference: { sectionTitle: '', sourceIndex: '3' },
       },
     ]),
   )
-  const raw = (await provider.analyze(request)) as GeminiContentPayload
+  const raw = (await provider.analyze(request)) as unknown as { attentionItems: { category: string }[] }
   const categories = raw.attentionItems.map((item) => item.category).sort()
   assert.deepEqual(categories, ['autoRenewal', 'cancellation', 'dataSharing', 'recurringCharges'])
+})
+
+test('duplicate equivalent findings across chunks are merged rather than duplicated', async () => {
+  const paragraph = 'Your subscription renews automatically each month. '.repeat(300)
+  const longText = Array.from({ length: 3 }, () => paragraph).join('\n\n')
+  const provider = createGeminiProvider(async () =>
+    payloadWithItems([
+      {
+        category: 'autoRenewal',
+        importance: 'high',
+        title: 'Automatic renewal',
+        explanation: 'Renews monthly.',
+        sourceText: 'Your subscription renews automatically each month.',
+        sourceReference: { sectionTitle: '', sourceIndex: '0' },
+      },
+    ]),
+  )
+  const raw = (await provider.analyze(baseRequest({ normalizedText: longText, originalText: longText }))) as unknown as {
+    attentionItems: unknown[]
+  }
+  assert.equal(raw.attentionItems.length, 1)
 })
 
 test('the canonical analysis is structurally identical across requested languages', async () => {
   const provider = createGeminiProvider(async () =>
     payloadWithItems([
       {
-        id: 'a',
         category: 'autoRenewal',
         importance: 'high',
-        confidence: 'high',
         title: 'Automatic renewal',
         explanation: 'Renews monthly.',
         sourceText: 'Your subscription renews automatically each month.',
-        sourceReference: { headingPath: [], containerDescriptor: 'paragraph', sourceIndex: 0 },
+        sourceReference: { sectionTitle: '', sourceIndex: '0' },
       },
     ]),
   )
-  const en = (await provider.analyze(baseRequest({ language: 'en' }))) as GeminiContentPayload
-  const kn = (await provider.analyze(baseRequest({ language: 'kn' }))) as GeminiContentPayload
-  const hi = (await provider.analyze(baseRequest({ language: 'hi' }))) as GeminiContentPayload
+  const en = (await provider.analyze(baseRequest({ language: 'en' }))) as unknown as { attentionItems: unknown[] }
+  const kn = (await provider.analyze(baseRequest({ language: 'kn' }))) as unknown as { attentionItems: unknown[] }
+  const hi = (await provider.analyze(baseRequest({ language: 'hi' }))) as unknown as { attentionItems: unknown[] }
 
   for (const raw of [en, kn, hi]) {
     const result = validateAnalysisResult(raw, context)

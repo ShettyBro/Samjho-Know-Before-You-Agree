@@ -3,6 +3,7 @@ import { env } from '../../config/env.js'
 import { CURRENT_SCHEMA_VERSION } from '../limits.js'
 import type { AgreementAnalysisProvider } from '../provider.js'
 import type { AnalysisRequest } from '../types.js'
+import { adaptAttentionItem } from './adapter.js'
 import { splitForProcessing } from './chunk.js'
 import { requestChunkAnalysis } from './client.js'
 import { mergeChunkResults } from './mergeChunks.js'
@@ -19,31 +20,33 @@ export function createGeminiProvider(analyzeChunk: (chunkText: string) => Promis
       const { chunks, truncated } = splitForProcessing(request.normalizedText)
 
       const chunkResults: GeminiContentPayload[] = []
+      let totalDropped = 0
       for (const chunkText of chunks) {
         const raw = await analyzeChunk(chunkText)
         const { items, droppedCount } = filterGroundedItems(raw.attentionItems, chunkText)
-        const limitations =
-          droppedCount > 0
-            ? [
-                ...raw.limitations,
-                `${droppedCount} finding(s) were removed because their source text could not be verified against the agreement.`,
-              ]
-            : raw.limitations
-        chunkResults.push({ ...raw, attentionItems: items, limitations })
+        totalDropped += droppedCount
+        chunkResults.push({ summary: raw.summary, attentionItems: items })
       }
 
-      const merged = mergeChunkResults(chunkResults, truncated)
+      const merged = mergeChunkResults(chunkResults)
       const generatedAt = new Date().toISOString()
 
-      const attentionItems = merged.attentionItems.map((item) => ({
-        ...item,
-        sourceReference: {
-          ...item.sourceReference,
-          sourceType: request.sourceType,
-          sourceUrl: request.resolvedUrl,
-        },
-      }))
+      const attentionItems = merged.attentionItems.map((item, index) =>
+        adaptAttentionItem(item, `gemini-${index}`, { sourceType: request.sourceType, sourceUrl: request.resolvedUrl }),
+      )
       const sections = deriveAllSections(attentionItems)
+
+      const limitations: string[] = []
+      if (totalDropped > 0) {
+        limitations.push(
+          `${totalDropped} finding(s) were removed because their source text could not be verified against the agreement.`,
+        )
+      }
+      if (truncated) {
+        limitations.push(
+          'This agreement was too long to analyze in full; analysis covers only the earliest sections within safe processing limits.',
+        )
+      }
 
       return {
         agreementId: request.agreementId,
@@ -57,7 +60,7 @@ export function createGeminiProvider(analyzeChunk: (chunkText: string) => Promis
         cancellation: sections.cancellation,
         dataSharing: sections.dataSharing,
         disputeResolution: sections.disputeResolution,
-        limitations: merged.limitations,
+        limitations,
         disclaimer: DISCLAIMER,
         generatedAt,
         providerMetadata: {

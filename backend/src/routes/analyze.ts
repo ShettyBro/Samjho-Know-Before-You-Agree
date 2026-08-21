@@ -1,12 +1,7 @@
 import { Router } from 'express'
-import { env } from '../config/env.js'
-import { geminiProvider } from '../analysis/gemini/provider.js'
-import { mockProvider } from '../analysis/mockProvider.js'
-import { analyzeAgreement } from '../analysis/service.js'
+import { analysisCacheService } from '../cache/instance.js'
 
 export const analyzeRouter = Router()
-
-const provider = env.analysisProvider === 'mock' ? mockProvider : geminiProvider
 
 analyzeRouter.post('/api/v1/agreements/analyze', async (req, res, next) => {
   const startedAt = Date.now()
@@ -15,13 +10,11 @@ analyzeRouter.post('/api/v1/agreements/analyze', async (req, res, next) => {
       ? req.body.normalizedText.length
       : 0
 
-  const result = await analyzeAgreement(req.body, provider)
+  const result = await analysisCacheService.getOrAnalyze(req.body)
   const elapsedMs = Date.now() - startedAt
 
   if (!result.ok) {
     console.log('[Samjho] analysis request failed', {
-      provider: provider.name,
-      model: env.gemini.model,
       elapsedMs,
       inputLength,
       errorCode: result.error.code,
@@ -31,11 +24,10 @@ analyzeRouter.post('/api/v1/agreements/analyze', async (req, res, next) => {
   }
 
   console.log('[Samjho] analysis request succeeded', {
-    provider: provider.name,
-    model: env.gemini.model,
-    analysisVersion: result.value.analysisVersion,
+    cacheKey: result.value.cacheKey,
+    analysisVersion: result.value.result.analysisVersion,
     elapsedMs,
     inputLength,
   })
-  res.status(200).json(result.value)
+  res.status(200).json(result.value.result)
 })

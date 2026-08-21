@@ -1,4 +1,4 @@
-import { checkBackendHealth } from '../shared/backendClient'
+import { checkBackendHealth, prefetchAnalysis } from '../shared/backendClient'
 import type { ConsentCandidate } from '../shared/discoveryTypes'
 import type { AgreementExtractionResult } from '../shared/extractionTypes'
 import type { AgreementIdentityResult } from '../shared/identityTypes'
@@ -6,6 +6,7 @@ import {
   extractRequestId,
   isKnownRequestPayloadType,
   isSamjhoRequest,
+  type PrefetchStatusEntry,
   type SamjhoRequest,
   type SamjhoResponse,
 } from '../shared/messages'
@@ -13,6 +14,7 @@ import {
 const latestCandidatesByTab = new Map<number, ConsentCandidate[]>()
 const latestExtractionsByTab = new Map<number, AgreementExtractionResult[]>()
 const latestIdentitiesByTab = new Map<number, AgreementIdentityResult[]>()
+const latestPrefetchStatusByTab = new Map<number, PrefetchStatusEntry[]>()
 
 async function buildResponse(request: SamjhoRequest, tabId: number | undefined): Promise<SamjhoResponse> {
   const { requestId, payload } = request
@@ -75,13 +77,31 @@ async function buildResponse(request: SamjhoRequest, tabId: number | undefined):
     }
   }
 
-  if (tabId !== undefined) latestIdentitiesByTab.set(tabId, payload.identities)
-  console.log('[Samjho] identity update', { tabId, identities: payload.identities })
+  if (payload.type === 'IDENTITY_UPDATE') {
+    if (tabId !== undefined) latestIdentitiesByTab.set(tabId, payload.identities)
+    console.log('[Samjho] identity update', { tabId, identities: payload.identities })
+    return {
+      kind: 'response',
+      requestId,
+      ok: true,
+      payload: { type: 'IDENTITY_ACK', receivedCount: payload.identities.length },
+    }
+  }
+
+  const results = await Promise.all(
+    payload.requests.map(async (request): Promise<PrefetchStatusEntry> => {
+      const outcome = await prefetchAnalysis(request)
+      if (!outcome) return { agreementId: request.agreementId, status: 'UNAVAILABLE' }
+      return { agreementId: request.agreementId, cacheKey: outcome.cacheKey, status: outcome.status }
+    }),
+  )
+  if (tabId !== undefined) latestPrefetchStatusByTab.set(tabId, results)
+  console.log('[Samjho] prefetch requested', { tabId, results })
   return {
     kind: 'response',
     requestId,
     ok: true,
-    payload: { type: 'IDENTITY_ACK', receivedCount: payload.identities.length },
+    payload: { type: 'PREFETCH_ACK', results },
   }
 }
 

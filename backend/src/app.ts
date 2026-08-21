@@ -4,6 +4,7 @@ import { env } from './config/env.js'
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js'
 import { analyzeRouter } from './routes/analyze.js'
 import { healthRouter } from './routes/health.js'
+import { prefetchRouter } from './routes/prefetch.js'
 
 export function createApp() {
   const app = express()
@@ -13,6 +14,7 @@ export function createApp() {
 
   app.use(healthRouter)
   app.use(analyzeRouter)
+  app.use(prefetchRouter)
 
   app.use(notFoundHandler)
   app.use(errorHandler)

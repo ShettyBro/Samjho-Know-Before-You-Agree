@@ -1,25 +1,35 @@
-import { MAX_ATTENTION_ITEMS, MAX_LIMITATIONS, MAX_SUMMARY_POINTS } from '../limits.js'
-import type { GeminiContentPayload } from './types.js'
+import { MAX_ATTENTION_ITEMS, MAX_SUMMARY_POINTS } from '../limits.js'
+import type { GeminiAttentionItemPayload, GeminiContentPayload } from './types.js'
 
 const IMPORTANCE_RANK: Record<string, number> = { high: 0, medium: 1, low: 2 }
 
-export function mergeChunkResults(chunkResults: GeminiContentPayload[], truncated: boolean): GeminiContentPayload {
-  const attentionItems: GeminiContentPayload['attentionItems'] = []
-  let idCounter = 0
+export type MergedGeminiContent = {
+  summary: string[]
+  attentionItems: GeminiAttentionItemPayload[]
+}
+
+function dedupeKey(item: GeminiAttentionItemPayload): string {
+  return `${item.category}:${item.sourceText.trim().toLowerCase()}`
+}
+
+export function mergeChunkResults(chunkResults: GeminiContentPayload[]): MergedGeminiContent {
+  const seen = new Set<string>()
+  const attentionItems: GeminiAttentionItemPayload[] = []
 
   chunkResults.forEach((chunk, chunkIndex) => {
     for (const item of chunk.attentionItems) {
-      const newId = `gemini-${idCounter}`
-      idCounter += 1
+      const key = dedupeKey(item)
+      if (seen.has(key)) continue
+      seen.add(key)
+
       attentionItems.push({
         ...item,
-        id: newId,
         sourceReference: {
           ...item.sourceReference,
-          containerDescriptor:
+          sectionTitle:
             chunkResults.length > 1
-              ? `chunk ${chunkIndex + 1} of ${chunkResults.length}: ${item.sourceReference.containerDescriptor}`
-              : item.sourceReference.containerDescriptor,
+              ? `chunk ${chunkIndex + 1} of ${chunkResults.length}: ${item.sourceReference.sectionTitle}`
+              : item.sourceReference.sectionTitle,
         },
       })
     }
@@ -29,16 +39,6 @@ export function mergeChunkResults(chunkResults: GeminiContentPayload[], truncate
   const cappedItems = attentionItems.slice(0, MAX_ATTENTION_ITEMS)
 
   const summary = Array.from(new Set(chunkResults.flatMap((chunk) => chunk.summary))).slice(0, MAX_SUMMARY_POINTS)
-  const limitations = Array.from(new Set(chunkResults.flatMap((chunk) => chunk.limitations)))
-  if (truncated) {
-    limitations.push(
-      'This agreement was too long to analyze in full; analysis covers only the earliest sections within safe processing limits.',
-    )
-  }
 
-  return {
-    summary,
-    attentionItems: cappedItems,
-    limitations: limitations.slice(0, MAX_LIMITATIONS),
-  }
+  return { summary, attentionItems: cappedItems }
 }

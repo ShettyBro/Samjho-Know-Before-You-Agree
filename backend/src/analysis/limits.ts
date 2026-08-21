@@ -32,6 +32,11 @@ export const ALLOWED_CATEGORIES = [
   'accountTermination',
   'obligations',
   'authorizationConsent',
+  'arbitration',
+  'liability',
+  'indemnification',
+  'governingLaw',
+  'deadline',
   'other',
 ] as const
 

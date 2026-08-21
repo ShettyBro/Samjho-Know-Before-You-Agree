@@ -13,8 +13,12 @@ export const env = {
   analysisProvider: (process.env.ANALYSIS_PROVIDER === 'mock' ? 'mock' : 'gemini') as 'mock' | 'gemini',
   gemini: {
     apiKey: process.env.GEMINI_API_KEY,
-    model: process.env.GEMINI_MODEL ?? 'gemini-flash-latest',
+    model: process.env.GEMINI_MODEL ?? 'gemini-3.1-flash-lite',
     timeoutMs: Number(process.env.GEMINI_TIMEOUT_MS ?? 20000),
     retryAttempts: Number(process.env.GEMINI_RETRY_ATTEMPTS ?? 2),
+  },
+  cache: {
+    ttlMs: Number(process.env.CACHE_TTL_MS ?? 600000),
+    maxEntries: Number(process.env.CACHE_MAX_ENTRIES ?? 500),
   },
 }

@@ -14,17 +14,14 @@ const FAKE_MODEL_RESPONSE = {
   summary: ['This appears to be a subscription agreement.', '1 attention item was identified for review.'],
   attentionItems: [
     {
-      id: 'a',
       category: 'autoRenewal',
       importance: 'high',
-      confidence: 'high',
       title: 'Automatic renewal',
       explanation: 'The subscription renews automatically each month.',
       sourceText: 'Your subscription renews automatically each month.',
-      sourceReference: { headingPath: ['Section 1'], containerDescriptor: 'paragraph', sourceIndex: 0 },
+      sourceReference: { sectionTitle: 'Section 1', sourceIndex: '0' },
     },
   ],
-  limitations: [],
 }
 
 before(() => {
@@ -70,7 +67,7 @@ test('the captured request uses JSON structured output with the simplified conte
   const schema = generationConfig?.responseSchema as { properties?: Record<string, unknown> } | undefined
   assert.ok(schema)
   const propertyNames = Object.keys(schema?.properties ?? {}).sort()
-  assert.deepEqual(propertyNames, ['attentionItems', 'limitations', 'summary'])
+  assert.deepEqual(propertyNames, ['attentionItems', 'summary'])
 })
 
 test('the full pipeline from request construction through M06 validation succeeds offline', async () => {

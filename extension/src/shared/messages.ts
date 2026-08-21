@@ -1,3 +1,4 @@
+import type { AnalysisRequestPayload } from './analysisRequestTypes'
 import type { ConsentCandidate } from './discoveryTypes'
 import type { AgreementExtractionResult } from './extractionTypes'
 import type { AgreementIdentityResult } from './identityTypes'
@@ -9,6 +10,7 @@ export type GetStatusRequestPayload = { type: 'GET_STATUS' }
 export type DiscoveryUpdateRequestPayload = { type: 'DISCOVERY_UPDATE'; candidates: ConsentCandidate[] }
 export type ExtractionUpdateRequestPayload = { type: 'EXTRACTION_UPDATE'; results: AgreementExtractionResult[] }
 export type IdentityUpdateRequestPayload = { type: 'IDENTITY_UPDATE'; identities: AgreementIdentityResult[] }
+export type PrefetchRequestPayload = { type: 'PREFETCH_REQUEST'; requests: AnalysisRequestPayload[] }
 
 export type RequestPayload =
   | PingRequestPayload
@@ -16,6 +18,7 @@ export type RequestPayload =
   | DiscoveryUpdateRequestPayload
   | ExtractionUpdateRequestPayload
   | IdentityUpdateRequestPayload
+  | PrefetchRequestPayload
 
 export type PongResponsePayload = { type: 'PONG'; respondedAt: number }
 
@@ -30,6 +33,8 @@ export type StatusResponsePayload = {
 export type DiscoveryAckResponsePayload = { type: 'DISCOVERY_ACK'; receivedCount: number }
 export type ExtractionAckResponsePayload = { type: 'EXTRACTION_ACK'; receivedCount: number }
 export type IdentityAckResponsePayload = { type: 'IDENTITY_ACK'; receivedCount: number }
+export type PrefetchStatusEntry = { agreementId: string; cacheKey?: string; status: string }
+export type PrefetchAckResponsePayload = { type: 'PREFETCH_ACK'; results: PrefetchStatusEntry[] }
 
 export type ErrorCode =
   | 'MALFORMED_MESSAGE'
@@ -46,6 +51,7 @@ export type ResponsePayload =
   | DiscoveryAckResponsePayload
   | ExtractionAckResponsePayload
   | IdentityAckResponsePayload
+  | PrefetchAckResponsePayload
   | ErrorResponsePayload
 
 export type SamjhoRequest = {
@@ -83,7 +89,8 @@ export function isKnownRequestPayloadType(type: string): type is RequestPayload[
     type === 'GET_STATUS' ||
     type === 'DISCOVERY_UPDATE' ||
     type === 'EXTRACTION_UPDATE' ||
-    type === 'IDENTITY_UPDATE'
+    type === 'IDENTITY_UPDATE' ||
+    type === 'PREFETCH_REQUEST'
   )
 }
 
