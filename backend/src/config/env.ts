@@ -10,4 +10,11 @@ export const env = {
   nodeEnv: process.env.NODE_ENV ?? 'development',
   port: Number(process.env.PORT ?? 4000),
   corsOrigins: readCorsOrigins(),
+  analysisProvider: (process.env.ANALYSIS_PROVIDER === 'mock' ? 'mock' : 'gemini') as 'mock' | 'gemini',
+  gemini: {
+    apiKey: process.env.GEMINI_API_KEY,
+    model: process.env.GEMINI_MODEL ?? 'gemini-flash-latest',
+    timeoutMs: Number(process.env.GEMINI_TIMEOUT_MS ?? 20000),
+    retryAttempts: Number(process.env.GEMINI_RETRY_ATTEMPTS ?? 2),
+  },
 }

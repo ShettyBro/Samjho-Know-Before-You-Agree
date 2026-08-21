@@ -1,6 +1,7 @@
+import { deriveAllSections } from './deriveSections.js'
 import { CURRENT_SCHEMA_VERSION } from './limits.js'
 import type { AgreementAnalysisProvider } from './provider.js'
-import type { AnalysisRequest, AnalysisSection, AttentionCategory, AttentionItem, ImportanceLevel } from './types.js'
+import type { AnalysisRequest, AttentionCategory, AttentionItem, ImportanceLevel } from './types.js'
 
 const MOCK_GENERATED_AT = '2024-01-01T00:00:00.000Z'
 
@@ -60,19 +61,11 @@ function buildAttentionItems(request: AnalysisRequest): AttentionItem[] {
   return items
 }
 
-function buildSection(items: AttentionItem[], categories: AttentionCategory[]): AnalysisSection {
-  const matched = items.filter((item) => categories.includes(item.category))
-  return {
-    available: matched.length > 0,
-    summary: matched.map((item) => item.explanation),
-    relatedAttentionItemIds: matched.map((item) => item.id),
-  }
-}
-
 export const mockProvider: AgreementAnalysisProvider = {
   name: 'mock',
   async analyze(request: AnalysisRequest) {
     const attentionItems = buildAttentionItems(request)
+    const sections = deriveAllSections(attentionItems)
 
     return {
       agreementId: request.agreementId,
@@ -83,12 +76,12 @@ export const mockProvider: AgreementAnalysisProvider = {
         `${attentionItems.length} attention item(s) were identified for review.`,
       ],
       attentionItems,
-      obligations: buildSection(attentionItems, ['obligations', 'authorizationConsent']),
-      charges: buildSection(attentionItems, ['fees', 'recurringCharges']),
-      renewals: buildSection(attentionItems, ['autoRenewal']),
-      cancellation: buildSection(attentionItems, ['cancellation', 'refundRestrictions']),
-      dataSharing: buildSection(attentionItems, ['dataCollection', 'dataSharing', 'thirdParties']),
-      disputeResolution: buildSection(attentionItems, ['disputeResolution']),
+      obligations: sections.obligations,
+      charges: sections.charges,
+      renewals: sections.renewals,
+      cancellation: sections.cancellation,
+      dataSharing: sections.dataSharing,
+      disputeResolution: sections.disputeResolution,
       limitations: ['This is a deterministic mock analysis produced for contract testing, not a real legal analysis.'],
       disclaimer:
         'Samjho helps you understand agreements more easily. This is not legal advice; consult a qualified professional for legal decisions.',

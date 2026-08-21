@@ -1,13 +1,15 @@
 import { strict as assert } from 'node:assert'
 import { after, before, test } from 'node:test'
 import type { AddressInfo } from 'node:net'
-import { createApp } from '../app.js'
+import type { createApp as CreateApp } from '../app.js'
 
 let baseUrl: string
-let server: ReturnType<ReturnType<typeof createApp>['listen']>
+let server: ReturnType<ReturnType<typeof CreateApp>['listen']>
 
-before(() => {
-  return new Promise<void>((resolve) => {
+before(async () => {
+  process.env.ANALYSIS_PROVIDER = 'mock'
+  const { createApp } = await import('../app.js')
+  await new Promise<void>((resolve) => {
     const app = createApp()
     server = app.listen(0, () => {
       const address = server.address() as AddressInfo
