@@ -4,6 +4,7 @@ node_modules/
 dist/
 build/
 *.tsbuildinfo
+*.timestamp-*.mjs
 logs
 *.log
 npm-debug.log*
