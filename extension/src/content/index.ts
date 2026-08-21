@@ -1,4 +1,5 @@
 import { sendRequest } from '../shared/rpc'
+import { startDiscovery } from './discovery'
 
 async function runContentSelfTest(): Promise<void> {
   const response = await sendRequest('content', { type: 'PING' })
@@ -6,3 +7,4 @@ async function runContentSelfTest(): Promise<void> {
 }
 
 void runContentSelfTest()
+startDiscovery()

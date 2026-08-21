@@ -1,4 +1,5 @@
 import { checkBackendHealth } from '../shared/backendClient'
+import type { ConsentCandidate } from '../shared/discoveryTypes'
 import {
   extractRequestId,
   isKnownRequestPayloadType,
@@ -7,7 +8,9 @@ import {
   type SamjhoResponse,
 } from '../shared/messages'
 
-async function buildResponse(request: SamjhoRequest): Promise<SamjhoResponse> {
+const latestCandidatesByTab = new Map<number, ConsentCandidate[]>()
+
+async function buildResponse(request: SamjhoRequest, tabId: number | undefined): Promise<SamjhoResponse> {
   const { requestId, payload } = request
 
   if (!isKnownRequestPayloadType(payload.type)) {
@@ -32,21 +35,33 @@ async function buildResponse(request: SamjhoRequest): Promise<SamjhoResponse> {
     }
   }
 
-  const backend = await checkBackendHealth()
+  if (payload.type === 'GET_STATUS') {
+    const backend = await checkBackendHealth()
+    return {
+      kind: 'response',
+      requestId,
+      ok: true,
+      payload: {
+        type: 'STATUS',
+        extensionVersion: chrome.runtime.getManifest().version,
+        backend,
+      },
+    }
+  }
+
+  if (tabId !== undefined) latestCandidatesByTab.set(tabId, payload.candidates)
+  console.log('[Samjho] discovery update', { tabId, candidates: payload.candidates })
   return {
     kind: 'response',
     requestId,
     ok: true,
-    payload: {
-      type: 'STATUS',
-      extensionVersion: chrome.runtime.getManifest().version,
-      backend,
-    },
+    payload: { type: 'DISCOVERY_ACK', receivedCount: payload.candidates.length },
   }
 }
 
 export function handleIncomingMessage(
   raw: unknown,
+  sender: chrome.runtime.MessageSender,
   sendResponse: (response: SamjhoResponse) => void,
 ): boolean {
   if (!isSamjhoRequest(raw)) {
@@ -63,7 +78,7 @@ export function handleIncomingMessage(
     return false
   }
 
-  buildResponse(raw)
+  buildResponse(raw, sender.tab?.id)
     .then(sendResponse)
     .catch(() =>
       sendResponse({
