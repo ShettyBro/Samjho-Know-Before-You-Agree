@@ -1,6 +1,7 @@
 import { sendRequest } from '../shared/rpc'
 import { startDiscovery } from './discovery'
 import { handleDiscoveredCandidates } from './extraction'
+import { handleExtractionResults } from './identity'
 
 async function runContentSelfTest(): Promise<void> {
   const response = await sendRequest('content', { type: 'PING' })
@@ -8,4 +9,6 @@ async function runContentSelfTest(): Promise<void> {
 }
 
 void runContentSelfTest()
-startDiscovery(handleDiscoveredCandidates)
+startDiscovery((live) => {
+  void handleDiscoveredCandidates(live, handleExtractionResults)
+})

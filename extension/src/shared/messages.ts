@@ -1,5 +1,6 @@
 import type { ConsentCandidate } from './discoveryTypes'
 import type { AgreementExtractionResult } from './extractionTypes'
+import type { AgreementIdentityResult } from './identityTypes'
 
 export type Origin = 'content' | 'sidepanel'
 
@@ -7,12 +8,14 @@ export type PingRequestPayload = { type: 'PING' }
 export type GetStatusRequestPayload = { type: 'GET_STATUS' }
 export type DiscoveryUpdateRequestPayload = { type: 'DISCOVERY_UPDATE'; candidates: ConsentCandidate[] }
 export type ExtractionUpdateRequestPayload = { type: 'EXTRACTION_UPDATE'; results: AgreementExtractionResult[] }
+export type IdentityUpdateRequestPayload = { type: 'IDENTITY_UPDATE'; identities: AgreementIdentityResult[] }
 
 export type RequestPayload =
   | PingRequestPayload
   | GetStatusRequestPayload
   | DiscoveryUpdateRequestPayload
   | ExtractionUpdateRequestPayload
+  | IdentityUpdateRequestPayload
 
 export type PongResponsePayload = { type: 'PONG'; respondedAt: number }
 
@@ -26,6 +29,7 @@ export type StatusResponsePayload = {
 
 export type DiscoveryAckResponsePayload = { type: 'DISCOVERY_ACK'; receivedCount: number }
 export type ExtractionAckResponsePayload = { type: 'EXTRACTION_ACK'; receivedCount: number }
+export type IdentityAckResponsePayload = { type: 'IDENTITY_ACK'; receivedCount: number }
 
 export type ErrorCode =
   | 'MALFORMED_MESSAGE'
@@ -41,6 +45,7 @@ export type ResponsePayload =
   | StatusResponsePayload
   | DiscoveryAckResponsePayload
   | ExtractionAckResponsePayload
+  | IdentityAckResponsePayload
   | ErrorResponsePayload
 
 export type SamjhoRequest = {
@@ -73,7 +78,13 @@ export function isSamjhoRequest(value: unknown): value is SamjhoRequest {
 }
 
 export function isKnownRequestPayloadType(type: string): type is RequestPayload['type'] {
-  return type === 'PING' || type === 'GET_STATUS' || type === 'DISCOVERY_UPDATE' || type === 'EXTRACTION_UPDATE'
+  return (
+    type === 'PING' ||
+    type === 'GET_STATUS' ||
+    type === 'DISCOVERY_UPDATE' ||
+    type === 'EXTRACTION_UPDATE' ||
+    type === 'IDENTITY_UPDATE'
+  )
 }
 
 export function extractRequestId(value: unknown): string {

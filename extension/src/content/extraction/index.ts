@@ -19,7 +19,10 @@ function reportExtractions(results: AgreementExtractionResult[]): void {
   })
 }
 
-export async function handleDiscoveredCandidates(live: LiveCandidate[]): Promise<void> {
+export async function handleDiscoveredCandidates(
+  live: LiveCandidate[],
+  onResults?: (results: AgreementExtractionResult[]) => void,
+): Promise<void> {
   const currentIds = new Set(live.map((candidate) => candidate.candidateId))
   for (const id of Array.from(resultsByCandidateId.keys())) {
     if (!currentIds.has(id)) resultsByCandidateId.delete(id)
@@ -36,4 +39,5 @@ export async function handleDiscoveredCandidates(live: LiveCandidate[]): Promise
 
   for (const result of results) resultsByCandidateId.set(result.candidateId, result)
   reportExtractions(results)
+  onResults?.(results)
 }
