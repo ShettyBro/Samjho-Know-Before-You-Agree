@@ -1,0 +1,24 @@
+{
+  "name": "samjho",
+  "private": true,
+  "version": "0.0.1",
+  "workspaces": [
+    "frontend",
+    "backend",
+    "extension"
+  ],
+  "scripts": {
+    "dev:frontend": "npm run dev -w frontend",
+    "dev:backend": "npm run dev -w backend",
+    "dev:extension": "npm run dev -w extension",
+    "build:frontend": "npm run build -w frontend",
+    "build:backend": "npm run build -w backend",
+    "build:extension": "npm run build -w extension",
+    "typecheck:backend": "npm run typecheck -w backend",
+    "typecheck:extension": "npm run typecheck -w extension"
+  },
+  "allowScripts": {
+    "esbuild@0.28.2": true,
+    "esbuild@0.21.5": true
+  }
+}

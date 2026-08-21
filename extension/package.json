@@ -1,0 +1,17 @@
+{
+  "name": "@samjho/extension",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@crxjs/vite-plugin": "^2.7.1",
+    "@types/chrome": "^0.2.6",
+    "typescript": "~6.0.2",
+    "vite": "^5.4.21"
+  }
+}
