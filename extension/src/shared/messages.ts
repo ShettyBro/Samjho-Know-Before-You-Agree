@@ -1,5 +1,6 @@
-import type { AnalysisRequestPayload } from './analysisRequestTypes'
+import type { AnalysisRequestPayload, SupportedLanguage } from './analysisRequestTypes'
 import type { AnalysisResultPayload } from './analysisResultTypes'
+import type { ChatRequest, ChatResult } from './chatTypes'
 import type { ConsentCandidate } from './discoveryTypes'
 import type { AgreementExtractionResult } from './extractionTypes'
 import type { AgreementIdentityResult } from './identityTypes'
@@ -14,6 +15,9 @@ export type IdentityUpdateRequestPayload = { type: 'IDENTITY_UPDATE'; identities
 export type PrefetchRequestPayload = { type: 'PREFETCH_REQUEST'; requests: AnalysisRequestPayload[] }
 export type GetTabStateRequestPayload = { type: 'GET_TAB_STATE'; tabId: number }
 export type AnalyzeRequestPayload = { type: 'ANALYZE_REQUEST'; request: AnalysisRequestPayload }
+export type ChatRequestPayload = { type: 'CHAT_REQUEST'; request: ChatRequest }
+export type OpenSidePanelRequestPayload = { type: 'OPEN_SIDE_PANEL_REQUEST'; language: SupportedLanguage }
+export type ReinjectContentScriptRequestPayload = { type: 'REINJECT_CONTENT_SCRIPT'; tabId: number }
 
 export type RequestPayload =
   | PingRequestPayload
@@ -24,6 +28,9 @@ export type RequestPayload =
   | PrefetchRequestPayload
   | GetTabStateRequestPayload
   | AnalyzeRequestPayload
+  | ChatRequestPayload
+  | OpenSidePanelRequestPayload
+  | ReinjectContentScriptRequestPayload
 
 export type PongResponsePayload = { type: 'PONG'; respondedAt: number }
 
@@ -47,8 +54,12 @@ export type TabStateResponsePayload = {
   extractions: AgreementExtractionResult[]
   identities: AgreementIdentityResult[]
   prefetchStatus: PrefetchStatusEntry[]
+  requestedLanguage: SupportedLanguage | null
 }
 export type AnalyzeResultResponsePayload = { type: 'ANALYZE_RESULT'; result: AnalysisResultPayload }
+export type ChatResponsePayload = { type: 'CHAT_RESPONSE'; result: ChatResult }
+export type OpenSidePanelAckResponsePayload = { type: 'OPEN_SIDE_PANEL_ACK'; accepted: boolean }
+export type ReinjectContentScriptAckResponsePayload = { type: 'REINJECT_CONTENT_SCRIPT_ACK'; injected: boolean }
 
 export type ErrorCode =
   | 'MALFORMED_MESSAGE'
@@ -57,6 +68,7 @@ export type ErrorCode =
   | 'TARGET_UNAVAILABLE'
   | 'INTERNAL_ERROR'
   | 'ANALYSIS_FAILED'
+  | 'CHAT_FAILED'
 
 export type ErrorResponsePayload = { type: 'ERROR'; code: ErrorCode; message: string }
 
@@ -69,6 +81,9 @@ export type ResponsePayload =
   | PrefetchAckResponsePayload
   | TabStateResponsePayload
   | AnalyzeResultResponsePayload
+  | ChatResponsePayload
+  | OpenSidePanelAckResponsePayload
+  | ReinjectContentScriptAckResponsePayload
   | ErrorResponsePayload
 
 export type SamjhoRequest = {
@@ -109,7 +124,10 @@ export function isKnownRequestPayloadType(type: string): type is RequestPayload[
     type === 'IDENTITY_UPDATE' ||
     type === 'PREFETCH_REQUEST' ||
     type === 'GET_TAB_STATE' ||
-    type === 'ANALYZE_REQUEST'
+    type === 'ANALYZE_REQUEST' ||
+    type === 'CHAT_REQUEST' ||
+    type === 'OPEN_SIDE_PANEL_REQUEST' ||
+    type === 'REINJECT_CONTENT_SCRIPT'
   )
 }
 

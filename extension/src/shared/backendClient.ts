@@ -1,5 +1,6 @@
 import { isAnalysisResultPayload, type AnalysisResultPayload } from './analysisResultTypes'
 import type { AnalysisRequestPayload } from './analysisRequestTypes'
+import { isChatResultPayload, type ChatRequest, type ChatResult } from './chatTypes'
 import type { BackendStatus } from './messages'
 
 const BACKEND_BASE_URL = 'http://localhost:4000'
@@ -77,5 +78,33 @@ export async function analyzeAgreement(request: AnalysisRequestPayload): Promise
     return { ok: true, result: data }
   } catch {
     return { ok: false, message: GENERIC_FAILURE_MESSAGE }
+  }
+}
+
+export type ChatOutcome = { ok: true; result: ChatResult } | { ok: false; message: string }
+
+const GENERIC_CHAT_FAILURE_MESSAGE = "Samjho couldn't answer that right now."
+
+export async function chatWithAgreement(request: ChatRequest): Promise<ChatOutcome> {
+  try {
+    const response = await fetch(`${BACKEND_BASE_URL}/api/v1/agreements/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(request),
+    })
+
+    const data: unknown = await response.json().catch(() => undefined)
+
+    if (!response.ok) {
+      return { ok: false, message: GENERIC_CHAT_FAILURE_MESSAGE }
+    }
+
+    if (!isChatResultPayload(data)) {
+      return { ok: false, message: GENERIC_CHAT_FAILURE_MESSAGE }
+    }
+
+    return { ok: true, result: data }
+  } catch {
+    return { ok: false, message: GENERIC_CHAT_FAILURE_MESSAGE }
   }
 }

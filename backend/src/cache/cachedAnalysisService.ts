@@ -8,7 +8,7 @@ import type { AnalysisCache } from './AnalysisCache.js'
 import { buildCacheKey } from './cacheKey.js'
 import { InFlightRegistry } from './inFlightRegistry.js'
 
-export type CacheLookupStatus = 'MISS' | 'PREFETCHING' | 'READY'
+export type CacheLookupStatus = 'MISS' | 'PREFETCHING' | 'READY' | 'RATE_LIMITED'
 
 export type PrefetchOutcome = { cacheKey: string; status: CacheLookupStatus }
 export type AnalyzeOutcome = { cacheKey: string; result: AnalysisResult }
@@ -20,41 +20,71 @@ export type CachedAnalysisService = {
   inFlightSize(): number
 }
 
+const RATE_LIMIT_COOLDOWN_MS = 30000
+const COOLDOWN_CODES = new Set(['RATE_LIMITED', 'QUOTA_EXHAUSTED'])
+
+type CooldownEntry = { code: 'RATE_LIMITED' | 'QUOTA_EXHAUSTED'; message: string; expiresAt: number }
+
 export function createCachedAnalysisService(deps: {
   cache: AnalysisCache
   provider: AgreementAnalysisProvider
   ttlMs: number
   now?: () => number
+  cooldownMs?: number
 }): CachedAnalysisService {
   const inFlight = new InFlightRegistry<AnalysisResult>()
   const now = deps.now ?? Date.now
+  const cooldownMs = deps.cooldownMs ?? RATE_LIMIT_COOLDOWN_MS
+  const cooldowns = new Map<string, CooldownEntry>()
+
+  function activeCooldown(cacheKey: string): CooldownEntry | undefined {
+    const entry = cooldowns.get(cacheKey)
+    if (!entry) return undefined
+    if (now() >= entry.expiresAt) {
+      cooldowns.delete(cacheKey)
+      return undefined
+    }
+    return entry
+  }
 
   function statusFor(cacheKey: string): CacheLookupStatus {
     if (deps.cache.has(cacheKey)) return 'READY'
     if (inFlight.has(cacheKey)) return 'PREFETCHING'
+    if (activeCooldown(cacheKey)) return 'RATE_LIMITED'
     return 'MISS'
   }
 
   function runAnalysis(request: AnalysisRequest, cacheKey: string): Promise<AnalysisResult> {
     return inFlight.register(cacheKey, async () => {
-      const rawResult = await deps.provider.analyze(request)
-      const validated = validateAnalysisResult(rawResult, {
-        agreementId: request.agreementId,
-        contentHash: request.contentHash,
-        analysisVersion: request.analysisVersion,
-      })
-      if (!validated.ok) throw validated.error
+      try {
+        const rawResult = await deps.provider.analyze(request)
+        const validated = validateAnalysisResult(rawResult, {
+          agreementId: request.agreementId,
+          contentHash: request.contentHash,
+          analysisVersion: request.analysisVersion,
+        })
+        if (!validated.ok) throw validated.error
 
-      deps.cache.set({
-        cacheKey,
-        agreementId: request.agreementId,
-        contentHash: request.contentHash,
-        analysisVersion: request.analysisVersion,
-        result: validated.value,
-        createdAt: now(),
-        expiresAt: now() + deps.ttlMs,
-      })
-      return validated.value
+        deps.cache.set({
+          cacheKey,
+          agreementId: request.agreementId,
+          contentHash: request.contentHash,
+          analysisVersion: request.analysisVersion,
+          result: validated.value,
+          createdAt: now(),
+          expiresAt: now() + deps.ttlMs,
+        })
+        return validated.value
+      } catch (error) {
+        if (error instanceof ApiError && COOLDOWN_CODES.has(error.code)) {
+          cooldowns.set(cacheKey, {
+            code: error.code as 'RATE_LIMITED' | 'QUOTA_EXHAUSTED',
+            message: error.message,
+            expiresAt: now() + cooldownMs,
+          })
+        }
+        throw error
+      }
     })
   }
 
@@ -82,7 +112,12 @@ export function createCachedAnalysisService(deps: {
       const request = requestValidation.value
       const cacheKey = buildCacheKey(request)
       const cached = deps.cache.get(cacheKey)
+      const cooldown = activeCooldown(cacheKey)
       if (cached) return { ok: true, value: { cacheKey, result: cached.result } }
+
+      if (cooldown) {
+        return { ok: false, error: new ApiError(cooldown.code, 429, cooldown.message) }
+      }
 
       try {
         const result = await runAnalysis(request, cacheKey)

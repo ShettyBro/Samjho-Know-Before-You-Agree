@@ -1,15 +1,28 @@
 import React from 'react'
 import { motion, useReducedMotion } from 'framer-motion'
+import type { SupportedLanguage } from '../../shared/analysisRequestTypes'
 import type { AnalysisResultPayload } from '../../shared/analysisResultTypes'
 import type { AgreementContext } from '../state/types'
+import { UI_TEXT } from '../uiText'
 import { AgreementContextBar } from './AgreementContextBar'
+import { AskSamjhoLauncher } from './AskSamjhoLauncher'
 import { AttentionItemsList } from './AttentionItemsList'
 import { AudioControls } from './AudioControls'
 import { DerivedSections } from './DerivedSections'
 import { DisclaimerNote } from './DisclaimerNote'
 import { SummarySection } from './SummarySection'
 
-export function ReadyView({ agreement, result }: { agreement: AgreementContext; result: AnalysisResultPayload }) {
+export function ReadyView({
+  agreement,
+  result,
+  agreementText,
+  language,
+}: {
+  agreement: AgreementContext
+  result: AnalysisResultPayload
+  agreementText: string
+  language: SupportedLanguage
+}) {
   const reduceMotion = useReducedMotion()
 
   return (
@@ -21,12 +34,12 @@ export function ReadyView({ agreement, result }: { agreement: AgreementContext; 
     >
       <AgreementContextBar agreement={agreement} />
       <p className="samjho-ready__status" role="status">
-        Analysis ready.
+        {UI_TEXT[language].analysisReadyStatus}
       </p>
-      <SummarySection summary={result.summary} />
-      <AttentionItemsList items={result.attentionItems} />
+      <SummarySection summary={result.summary} language={language} />
+      <AttentionItemsList items={result.attentionItems} language={language} />
       <DerivedSections result={result} />
-      <AudioControls />
+      <AudioControls language={language} />
       {result.limitations.length > 0 ? (
         <ul className="samjho-limitations">
           {result.limitations.map((limitation, index) => (
@@ -35,6 +48,13 @@ export function ReadyView({ agreement, result }: { agreement: AgreementContext; 
         </ul>
       ) : null}
       <DisclaimerNote disclaimer={result.disclaimer} />
+      <AskSamjhoLauncher
+        agreementId={agreement.agreementId}
+        contentHash={agreement.contentHash}
+        analysisVersion={agreement.analysisVersion}
+        agreementText={agreementText}
+        language={language}
+      />
     </motion.div>
   )
 }

@@ -22,6 +22,7 @@ export default defineManifest({
   side_panel: {
     default_path: 'src/sidepanel/index.html',
   },
-  permissions: ['sidePanel'],
+  permissions: ['sidePanel', 'scripting'],
   host_permissions: ['http://localhost:4000/*'],
+  optional_host_permissions: ['<all_urls>'],
 })

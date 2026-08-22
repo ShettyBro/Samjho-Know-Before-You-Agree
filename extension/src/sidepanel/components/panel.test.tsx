@@ -56,7 +56,7 @@ const agreement = {
 }
 
 test('the idle/detecting status view renders without exposing internal terminology', () => {
-  const markup = renderToStaticMarkup(<StatusView state={{ kind: 'DETECTING' }} onRetry={() => undefined} />)
+  const markup = renderToStaticMarkup(<StatusView state={{ kind: 'DETECTING' }} onRetry={() => undefined} language="en" />)
   assert.ok(markup.includes('Looking at this page'))
   assert.ok(!markup.toLowerCase().includes('gemini'))
   assert.ok(!markup.toLowerCase().includes('cache'))
@@ -65,13 +65,24 @@ test('the idle/detecting status view renders without exposing internal terminolo
 
 test('the prefetching status view uses plain language for the loading experience', () => {
   const state: PanelState = { kind: 'PREFETCHING', agreement, attempt: 0 }
-  const markup = renderToStaticMarkup(<StatusView state={state} onRetry={() => undefined} />)
+  const markup = renderToStaticMarkup(<StatusView state={state} onRetry={() => undefined} language="en" />)
   assert.ok(markup.includes('Understanding the agreement'))
   assert.ok(!markup.includes('%'))
 })
 
+test('switching the selected language changes the visible status text, not just the internal state', () => {
+  const englishMarkup = renderToStaticMarkup(<StatusView state={{ kind: 'DETECTING' }} onRetry={() => undefined} language="en" />)
+  const kannadaMarkup = renderToStaticMarkup(<StatusView state={{ kind: 'DETECTING' }} onRetry={() => undefined} language="kn" />)
+  const hindiMarkup = renderToStaticMarkup(<StatusView state={{ kind: 'DETECTING' }} onRetry={() => undefined} language="hi" />)
+  assert.ok(englishMarkup.includes('Looking at this page'))
+  assert.ok(!kannadaMarkup.includes('Looking at this page'))
+  assert.ok(kannadaMarkup.includes('ಈ ಪುಟವನ್ನು ಪರಿಶೀಲಿಸಲಾಗುತ್ತಿದೆ'))
+  assert.ok(!hindiMarkup.includes('Looking at this page'))
+  assert.ok(hindiMarkup.includes('इस पृष्ठ की जांच की जा रही है'))
+})
+
 test('the ready view renders the summary and attention items', () => {
-  const markup = renderToStaticMarkup(<ReadyView agreement={agreement} result={baseResult()} />)
+  const markup = renderToStaticMarkup(<ReadyView agreement={agreement} result={baseResult()} agreementText="Sample agreement text." language="en" />)
   assert.ok(markup.includes('This agreement renews automatically each month.'))
   assert.ok(markup.includes('Automatic renewal'))
   assert.ok(markup.includes('Analysis ready.'))
@@ -85,7 +96,7 @@ test('high, medium, and low attention items render distinct, accessible importan
       { ...baseResult().attentionItems[0], id: 'c', importance: 'low' },
     ],
   }).attentionItems
-  const markup = renderToStaticMarkup(<AttentionItemsList items={items} />)
+  const markup = renderToStaticMarkup(<AttentionItemsList items={items} language="en" />)
   assert.ok(markup.includes('High importance'))
   assert.ok(markup.includes('Medium importance'))
   assert.ok(markup.includes('Low importance'))
@@ -94,14 +105,23 @@ test('high, medium, and low attention items render distinct, accessible importan
 test('a long source clause renders as an expandable, collapsed-by-default section', () => {
   const longText = 'This clause describes a lengthy obligation. '.repeat(20)
   const items = [{ ...baseResult().attentionItems[0], sourceText: longText }]
-  const markup = renderToStaticMarkup(<AttentionItemsList items={items} />)
+  const markup = renderToStaticMarkup(<AttentionItemsList items={items} language="en" />)
   assert.ok(markup.includes('<details'))
   assert.ok(!markup.includes('open=""'))
 })
 
 test('a short source clause is shown directly without a collapsible control', () => {
-  const markup = renderToStaticMarkup(<AttentionItemsList items={baseResult().attentionItems} />)
+  const markup = renderToStaticMarkup(<AttentionItemsList items={baseResult().attentionItems} language="en" />)
   assert.ok(!markup.includes('<details'))
+})
+
+test('the important-items heading and source clause label switch language along with everything else', () => {
+  const englishMarkup = renderToStaticMarkup(<AttentionItemsList items={baseResult().attentionItems} language="en" />)
+  const hindiMarkup = renderToStaticMarkup(<AttentionItemsList items={baseResult().attentionItems} language="hi" />)
+  assert.ok(englishMarkup.includes('Important things to know'))
+  assert.ok(englishMarkup.includes('Source clause'))
+  assert.ok(hindiMarkup.includes('जानने योग्य महत्वपूर्ण बातें'))
+  assert.ok(hindiMarkup.includes('मूल वाक्य'))
 })
 
 test('derived sections with no available content are hidden entirely', () => {
@@ -127,7 +147,7 @@ test('the language tabs mark exactly one tab as selected', () => {
 
 test('the error status view shows a safe message and a retry action, never raw provider detail', () => {
   const state: PanelState = { kind: 'ERROR', agreement, message: "We couldn't analyze this agreement right now.", attempt: 0 }
-  const markup = renderToStaticMarkup(<StatusView state={state} onRetry={() => undefined} />)
+  const markup = renderToStaticMarkup(<StatusView state={state} onRetry={() => undefined} language="en" />)
   assert.ok(markup.includes('analyze this agreement right now.'))
   assert.ok(markup.includes('Try again'))
   assert.ok(!markup.toLowerCase().includes('502'))
@@ -135,11 +155,11 @@ test('the error status view shows a safe message and a retry action, never raw p
 })
 
 test('the no-agreement status view does not claim a definitive absence of any agreement', () => {
-  const markup = renderToStaticMarkup(<StatusView state={{ kind: 'NO_AGREEMENT' }} onRetry={() => undefined} />)
+  const markup = renderToStaticMarkup(<StatusView state={{ kind: 'NO_AGREEMENT' }} onRetry={() => undefined} language="en" />)
   assert.ok(markup.includes('No agreement detected yet'))
 })
 
 test('the unsupported status view explains gracefully without technical jargon', () => {
-  const markup = renderToStaticMarkup(<StatusView state={{ kind: 'UNSUPPORTED' }} onRetry={() => undefined} />)
+  const markup = renderToStaticMarkup(<StatusView state={{ kind: 'UNSUPPORTED' }} onRetry={() => undefined} language="en" />)
   assert.ok(markup.includes("isn’t supported"))
 })

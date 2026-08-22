@@ -1,9 +1,12 @@
 import React from 'react'
-export function AudioControls() {
+import type { SupportedLanguage } from '../../shared/analysisRequestTypes'
+import { UI_TEXT } from '../uiText'
+
+export function AudioControls({ language }: { language: SupportedLanguage }) {
   return (
     <section className="samjho-section" aria-labelledby="samjho-audio-heading">
       <h2 id="samjho-audio-heading" className="samjho-section__heading">
-        Listen
+        {UI_TEXT[language].audioHeading}
       </h2>
       <div className="samjho-audio" role="group" aria-label="Audio playback controls">
         <button type="button" className="samjho-button" disabled aria-label="Play audio">

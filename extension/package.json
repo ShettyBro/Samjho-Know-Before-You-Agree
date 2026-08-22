@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.test.json",
-    "test": "node --import tsx --test src/shared/*.test.ts src/shared/identity/*.test.ts src/background/*.test.ts src/sidepanel/state/*.test.ts src/sidepanel/components/*.test.tsx"
+    "test": "node --import tsx --test src/shared/*.test.ts src/shared/identity/*.test.ts src/background/*.test.ts src/sidepanel/state/*.test.ts src/sidepanel/components/*.test.tsx src/content/popup/*.test.ts src/content/popup/*.test.tsx"
   },
   "dependencies": {
     "framer-motion": "^12.4.10",

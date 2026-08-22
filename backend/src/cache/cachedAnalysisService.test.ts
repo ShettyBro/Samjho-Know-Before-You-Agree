@@ -1,5 +1,6 @@
 import { strict as assert } from 'node:assert'
 import { test } from 'node:test'
+import { ApiError } from '../analysis/errors.js'
 import type { AgreementAnalysisProvider } from '../analysis/provider.js'
 import type { AnalysisRequest } from '../analysis/types.js'
 import { InMemoryAnalysisCache } from './AnalysisCache.js'
@@ -276,4 +277,100 @@ test('prefetch and explicit analysis share the same in-flight request', async ()
 
   assert.equal(callCount(), 1)
   assert.equal(explicitResult.ok, true)
+})
+
+function createRateLimitedProvider(code: 'RATE_LIMITED' | 'QUOTA_EXHAUSTED' = 'RATE_LIMITED') {
+  let callCount = 0
+  const provider: AgreementAnalysisProvider = {
+    name: 'fake-rate-limited',
+    async analyze() {
+      callCount += 1
+      throw new ApiError(code, 429, 'Samjho is receiving too many requests right now.')
+    },
+  }
+  return { provider, callCount: () => callCount }
+}
+
+test('a RATE_LIMITED provider failure starts a cooldown that refuses an immediate automatic re-analysis', async () => {
+  const { provider, callCount } = createRateLimitedProvider('RATE_LIMITED')
+  const service = createCachedAnalysisService({ cache: new InMemoryAnalysisCache(50), provider, ttlMs: 60000 })
+
+  const first = await service.getOrAnalyze(baseRequest())
+  assert.equal(first.ok, false)
+  if (!first.ok) assert.equal(first.error.code, 'RATE_LIMITED')
+  assert.equal(callCount(), 1)
+
+  const second = await service.getOrAnalyze(baseRequest())
+  assert.equal(second.ok, false)
+  if (!second.ok) assert.equal(second.error.code, 'RATE_LIMITED')
+  assert.equal(callCount(), 1)
+})
+
+test('a QUOTA_EXHAUSTED provider failure also starts a cooldown that refuses an immediate retry', async () => {
+  const { provider, callCount } = createRateLimitedProvider('QUOTA_EXHAUSTED')
+  const service = createCachedAnalysisService({ cache: new InMemoryAnalysisCache(50), provider, ttlMs: 60000 })
+
+  await service.getOrAnalyze(baseRequest())
+  assert.equal(callCount(), 1)
+
+  const second = await service.getOrAnalyze(baseRequest())
+  assert.equal(second.ok, false)
+  if (!second.ok) assert.equal(second.error.code, 'QUOTA_EXHAUSTED')
+  assert.equal(callCount(), 1)
+})
+
+test('prefetch during an active rate-limit cooldown reports RATE_LIMITED status and does not call the provider again', async () => {
+  const { provider, callCount } = createRateLimitedProvider('RATE_LIMITED')
+  const service = createCachedAnalysisService({ cache: new InMemoryAnalysisCache(50), provider, ttlMs: 60000 })
+
+  await service.getOrAnalyze(baseRequest())
+  assert.equal(callCount(), 1)
+
+  const prefetchResult = service.prefetch(baseRequest())
+  assert.equal(prefetchResult.ok, true)
+  if (prefetchResult.ok) assert.equal(prefetchResult.value.status, 'RATE_LIMITED')
+  assert.equal(callCount(), 1)
+})
+
+test('statusFor reports RATE_LIMITED while a cooldown for that cache key is active', async () => {
+  const { provider } = createRateLimitedProvider('RATE_LIMITED')
+  const service = createCachedAnalysisService({ cache: new InMemoryAnalysisCache(50), provider, ttlMs: 60000 })
+
+  await service.getOrAnalyze(baseRequest())
+  assert.equal(service.statusFor('agr:a:sha256:a:v1'), 'RATE_LIMITED')
+})
+
+test('the rate-limit cooldown expires after its configured duration, allowing a fresh analysis attempt', async () => {
+  let currentTime = 1000
+  const { provider, callCount } = createRateLimitedProvider('RATE_LIMITED')
+  const service = createCachedAnalysisService({
+    cache: new InMemoryAnalysisCache(50),
+    provider,
+    ttlMs: 60000,
+    now: () => currentTime,
+    cooldownMs: 500,
+  })
+
+  await service.getOrAnalyze(baseRequest())
+  assert.equal(callCount(), 1)
+
+  const stillCoolingDown = await service.getOrAnalyze(baseRequest())
+  assert.equal(stillCoolingDown.ok, false)
+  assert.equal(callCount(), 1)
+
+  currentTime += 1000
+  const afterCooldown = await service.getOrAnalyze(baseRequest())
+  assert.equal(afterCooldown.ok, false)
+  assert.equal(callCount(), 2)
+})
+
+test('a non-rate-limit provider failure does not start a cooldown, so the next attempt calls the provider again', async () => {
+  const { provider, callCount } = createFakeProvider(() => 'throw')
+  const service = createCachedAnalysisService({ cache: new InMemoryAnalysisCache(50), provider, ttlMs: 60000 })
+
+  await service.getOrAnalyze(baseRequest())
+  assert.equal(callCount(), 1)
+
+  await service.getOrAnalyze(baseRequest())
+  assert.equal(callCount(), 2)
 })

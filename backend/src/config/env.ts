@@ -21,4 +21,13 @@ export const env = {
     ttlMs: Number(process.env.CACHE_TTL_MS ?? 600000),
     maxEntries: Number(process.env.CACHE_MAX_ENTRIES ?? 500),
   },
+  database: {
+    url: process.env.DATABASE_URL,
+  },
+  auth: {
+    jwtSecret: process.env.AUTH_JWT_SECRET,
+    sessionCookieName: 'samjho_session',
+    sessionTtlMs: Number(process.env.AUTH_SESSION_TTL_MS ?? 12 * 60 * 60 * 1000),
+    isProduction: (process.env.NODE_ENV ?? 'development') === 'production',
+  },
 }

@@ -1,7 +1,8 @@
 import { strict as assert } from 'node:assert'
 import { test } from 'node:test'
 import { ApiError } from '../errors.js'
-import { assertGeminiConfigured, mapGeminiError } from './client.js'
+import { classifyGeminiError } from './errorClassification.js'
+import { assertGeminiConfigured, errorForClassification, mapGeminiError } from './client.js'
 
 test('a missing API key produces a controlled PROVIDER_ERROR rather than a crash', () => {
   assert.throws(() => assertGeminiConfigured(undefined), (error: unknown) => {
@@ -39,4 +40,27 @@ test('a timeout-shaped error maps to a safe PROVIDER_ERROR', () => {
 test('an unrecognized error still maps to a safe PROVIDER_ERROR rather than throwing raw internals', () => {
   const mapped = mapGeminiError({ weird: 'shape' })
   assert.equal(mapped.code, 'PROVIDER_ERROR')
+})
+
+test('a rate-limited classification produces a distinct RATE_LIMITED error with a 429 status', () => {
+  const classification = classifyGeminiError({ status: 429, message: JSON.stringify({ error: { status: 'RESOURCE_EXHAUSTED' } }) })
+  const error = errorForClassification(classification)
+  assert.equal(error.code, 'RATE_LIMITED')
+  assert.equal(error.status, 429)
+})
+
+test('a daily-quota classification produces a distinct QUOTA_EXHAUSTED error with a 429 status', () => {
+  const classification = classifyGeminiError({
+    status: 429,
+    message: JSON.stringify({ error: { status: 'RESOURCE_EXHAUSTED' } }) + ' perDay',
+  })
+  const error = errorForClassification(classification)
+  assert.equal(error.code, 'QUOTA_EXHAUSTED')
+  assert.equal(error.status, 429)
+})
+
+test('every other classification still maps to a safe generic PROVIDER_ERROR', () => {
+  const error = errorForClassification({ category: 'NETWORK_ERROR' })
+  assert.equal(error.code, 'PROVIDER_ERROR')
+  assert.equal(error.status, 502)
 })

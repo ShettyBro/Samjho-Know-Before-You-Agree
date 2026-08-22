@@ -1,4 +1,5 @@
-import { analyzeAgreement, checkBackendHealth, prefetchAnalysis } from '../shared/backendClient'
+import { analyzeAgreement, chatWithAgreement, checkBackendHealth, prefetchAnalysis } from '../shared/backendClient'
+import type { SupportedLanguage } from '../shared/analysisRequestTypes'
 import type { ConsentCandidate } from '../shared/discoveryTypes'
 import type { AgreementExtractionResult } from '../shared/extractionTypes'
 import type { AgreementIdentityResult } from '../shared/identityTypes'
@@ -15,6 +16,7 @@ const latestCandidatesByTab = new Map<number, ConsentCandidate[]>()
 const latestExtractionsByTab = new Map<number, AgreementExtractionResult[]>()
 const latestIdentitiesByTab = new Map<number, AgreementIdentityResult[]>()
 const latestPrefetchStatusByTab = new Map<number, PrefetchStatusEntry[]>()
+const requestedLanguageByTab = new Map<number, SupportedLanguage>()
 const contentScriptSeenTabs = new Set<number>()
 
 export function clearTabState(tabId: number): void {
@@ -22,6 +24,7 @@ export function clearTabState(tabId: number): void {
   latestExtractionsByTab.delete(tabId)
   latestIdentitiesByTab.delete(tabId)
   latestPrefetchStatusByTab.delete(tabId)
+  requestedLanguageByTab.delete(tabId)
   contentScriptSeenTabs.delete(tabId)
 }
 
@@ -121,6 +124,8 @@ async function buildResponse(request: SamjhoRequest, tabId: number | undefined):
 
   if (payload.type === 'GET_TAB_STATE') {
     const { tabId: requestedTabId } = payload
+    const requestedLanguage = requestedLanguageByTab.get(requestedTabId) ?? null
+    requestedLanguageByTab.delete(requestedTabId)
     return {
       kind: 'response',
       requestId,
@@ -132,7 +137,58 @@ async function buildResponse(request: SamjhoRequest, tabId: number | undefined):
         extractions: latestExtractionsByTab.get(requestedTabId) ?? [],
         identities: latestIdentitiesByTab.get(requestedTabId) ?? [],
         prefetchStatus: latestPrefetchStatusByTab.get(requestedTabId) ?? [],
+        requestedLanguage,
       },
+    }
+  }
+
+  if (payload.type === 'OPEN_SIDE_PANEL_REQUEST') {
+    if (tabId !== undefined) {
+      requestedLanguageByTab.set(tabId, payload.language)
+    }
+    return {
+      kind: 'response',
+      requestId,
+      ok: true,
+      payload: { type: 'OPEN_SIDE_PANEL_ACK', accepted: tabId !== undefined },
+    }
+  }
+
+  if (payload.type === 'REINJECT_CONTENT_SCRIPT') {
+    const manifest = chrome.runtime.getManifest()
+    const contentScript = manifest.content_scripts?.[0]
+    let injected = false
+    if (contentScript?.js && contentScript.js.length > 0) {
+      try {
+        await chrome.scripting.executeScript({ target: { tabId: payload.tabId }, files: contentScript.js })
+        injected = true
+      } catch {
+        injected = false
+      }
+    }
+    return {
+      kind: 'response',
+      requestId,
+      ok: true,
+      payload: { type: 'REINJECT_CONTENT_SCRIPT_ACK', injected },
+    }
+  }
+
+  if (payload.type === 'CHAT_REQUEST') {
+    const outcome = await chatWithAgreement(payload.request)
+    if (!outcome.ok) {
+      return {
+        kind: 'response',
+        requestId,
+        ok: false,
+        payload: { type: 'ERROR', code: 'CHAT_FAILED', message: outcome.message },
+      }
+    }
+    return {
+      kind: 'response',
+      requestId,
+      ok: true,
+      payload: { type: 'CHAT_RESPONSE', result: outcome.result },
     }
   }
 

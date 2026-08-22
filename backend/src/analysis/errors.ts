@@ -5,7 +5,13 @@ export type ApiErrorCode =
   | 'PAYLOAD_TOO_LARGE'
   | 'ANALYSIS_SCHEMA_ERROR'
   | 'PROVIDER_ERROR'
+  | 'RATE_LIMITED'
+  | 'QUOTA_EXHAUSTED'
   | 'INTERNAL_ERROR'
+  | 'EMAIL_ALREADY_REGISTERED'
+  | 'INVALID_CREDENTIALS'
+  | 'UNAUTHENTICATED'
+  | 'EXTRACTION_FAILED'
 
 export class ApiError extends Error {
   readonly code: ApiErrorCode

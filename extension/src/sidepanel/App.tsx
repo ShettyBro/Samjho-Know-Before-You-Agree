@@ -10,17 +10,17 @@ import { usePanelState } from './state/usePanelState'
 
 export function App() {
   const [language, setLanguage] = useState<SupportedLanguage>(DEFAULT_LANGUAGE)
-  const { state, retry } = usePanelState(language)
+  const { state, retry, getAgreementText } = usePanelState(language, setLanguage)
 
   return (
     <div className="samjho-panel">
-      <Header />
+      <Header language={language} />
       <LanguageTabs selected={language} onSelect={setLanguage} />
       <main className="samjho-main">
         {state.kind === 'READY' ? (
-          <ReadyView agreement={state.agreement} result={state.result} />
+          <ReadyView agreement={state.agreement} result={state.result} agreementText={getAgreementText(state.agreement) ?? ''} language={language} />
         ) : (
-          <StatusView state={state} onRetry={retry} />
+          <StatusView state={state} onRetry={retry} language={language} />
         )}
       </main>
     </div>

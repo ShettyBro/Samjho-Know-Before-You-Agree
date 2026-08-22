@@ -6,6 +6,7 @@ export type SourceType =
   | 'externalLink'
   | 'newTabLink'
   | 'pdf'
+  | 'pastedText'
 
 export type SupportedLanguage = 'en' | 'kn' | 'hi'
 

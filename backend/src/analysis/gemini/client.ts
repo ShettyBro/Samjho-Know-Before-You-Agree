@@ -1,7 +1,7 @@
 import { GoogleGenAI } from '@google/genai'
 import { env } from '../../config/env.js'
 import { ApiError } from '../errors.js'
-import { classifyGeminiError } from './errorClassification.js'
+import { classifyGeminiError, type GeminiErrorClassification } from './errorClassification.js'
 import { buildSystemInstruction, buildUserContent } from './prompt.js'
 import { GEMINI_RESPONSE_SCHEMA } from './schema.js'
 import type { GeminiContentPayload } from './types.js'
@@ -9,6 +9,14 @@ import type { GeminiContentPayload } from './types.js'
 let client: GoogleGenAI | undefined
 
 const PROVIDER_UNAVAILABLE_MESSAGE = 'The analysis provider is temporarily unavailable.'
+const RATE_LIMITED_MESSAGE = 'Samjho is receiving too many requests right now. Please try again shortly.'
+const QUOTA_EXHAUSTED_MESSAGE = 'Samjho has reached its analysis limit for now. Please try again later.'
+
+export function errorForClassification(classification: GeminiErrorClassification): ApiError {
+  if (classification.category === 'RATE_LIMITED') return new ApiError('RATE_LIMITED', 429, RATE_LIMITED_MESSAGE)
+  if (classification.category === 'QUOTA_EXHAUSTED') return new ApiError('QUOTA_EXHAUSTED', 429, QUOTA_EXHAUSTED_MESSAGE)
+  return new ApiError('PROVIDER_ERROR', 502, PROVIDER_UNAVAILABLE_MESSAGE)
+}
 
 export function assertGeminiConfigured(apiKey: string | undefined): void {
   if (!apiKey) {
@@ -65,7 +73,7 @@ export async function requestChunkAnalysis(chunkText: string): Promise<GeminiCon
       providerCode: classification.providerCode,
       requestId: classification.requestId,
     })
-    throw mapGeminiError(error)
+    throw errorForClassification(classification)
   }
 
   const text = response.text

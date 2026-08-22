@@ -4,7 +4,9 @@ import { buildAnalysisRequestPayload, type SupportedLanguage } from '../../share
 import type { AnalysisResultPayload } from '../../shared/analysisResultTypes'
 import { findPairByAgreementId, pairExtractionsWithIdentities, pickCurrentAgreement, type PairedCandidate } from './pairCandidates'
 import { panelReducer } from './reducer'
-import { resultCacheKey, type PanelState } from './types'
+import { resultCacheKey, type AgreementContext, type PanelState } from './types'
+
+type CacheEntry = { result: AnalysisResultPayload; agreementText: string }
 
 const DETECTION_TIMEOUT_MS = 4000
 const ACTIVE_POLL_INTERVAL_MS = 700
@@ -14,12 +16,14 @@ const GENERIC_FAILURE_MESSAGE = "We couldn't analyze this agreement right now."
 
 const INITIAL_STATE: PanelState = { kind: 'IDLE' }
 
-export function usePanelState(language: SupportedLanguage) {
+export function usePanelState(language: SupportedLanguage, onLanguageRequested?: (language: SupportedLanguage) => void) {
   const [state, dispatch] = useReducer(panelReducer, INITIAL_STATE)
   const activeTabIdRef = useRef<number | undefined>(undefined)
   const pairedRef = useRef<PairedCandidate[]>([])
   const detectionStartedAtRef = useRef<number>(Date.now())
-  const resultCacheRef = useRef<Map<string, AnalysisResultPayload>>(new Map())
+  const resultCacheRef = useRef<Map<string, CacheEntry>>(new Map())
+  const onLanguageRequestedRef = useRef(onLanguageRequested)
+  onLanguageRequestedRef.current = onLanguageRequested
 
   useEffect(() => {
     let cancelled = false
@@ -34,14 +38,18 @@ export function usePanelState(language: SupportedLanguage) {
       let elapsed = Date.now() - detectionStartedAtRef.current
 
       if (response.ok && response.payload.type === 'TAB_STATE') {
+        if (response.payload.requestedLanguage) {
+          onLanguageRequestedRef.current?.(response.payload.requestedLanguage)
+        }
+
         const paired = pairExtractionsWithIdentities(response.payload.extractions, response.payload.identities)
         pairedRef.current = paired
 
         const agreement = pickCurrentAgreement(paired)
         if (agreement) {
-          const cachedResult = resultCacheRef.current.get(resultCacheKey(agreement))
-          if (cachedResult) {
-            dispatch({ type: 'CACHED_RESULT_FOUND', agreement, result: cachedResult })
+          const cachedEntry = resultCacheRef.current.get(resultCacheKey(agreement))
+          if (cachedEntry) {
+            dispatch({ type: 'CACHED_RESULT_FOUND', agreement, result: cachedEntry.result })
           } else {
             dispatch({ type: 'AGREEMENT_FOUND', agreement })
           }
@@ -125,7 +133,10 @@ export function usePanelState(language: SupportedLanguage) {
     let cancelled = false
     sendRequest('sidepanel', { type: 'ANALYZE_REQUEST', request }, ANALYZE_TIMEOUT_MS).then((response) => {
       if (response.ok && response.payload.type === 'ANALYZE_RESULT') {
-        resultCacheRef.current.set(resultCacheKey(agreement), response.payload.result)
+        resultCacheRef.current.set(resultCacheKey(agreement), {
+          result: response.payload.result,
+          agreementText: request.normalizedText,
+        })
       }
       if (cancelled) return
       if (response.ok && response.payload.type === 'ANALYZE_RESULT') {
@@ -145,5 +156,9 @@ export function usePanelState(language: SupportedLanguage) {
     dispatch({ type: 'RETRY_REQUESTED' })
   }
 
-  return { state, retry }
+  function getAgreementText(agreement: AgreementContext): string | undefined {
+    return resultCacheRef.current.get(resultCacheKey(agreement))?.agreementText
+  }
+
+  return { state, retry, getAgreementText }
 }

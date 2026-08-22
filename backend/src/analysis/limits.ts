@@ -17,6 +17,7 @@ export const SUPPORTED_SOURCE_TYPES = [
   'externalLink',
   'newTabLink',
   'pdf',
+  'pastedText',
 ] as const
 
 export const ALLOWED_CATEGORIES = [
