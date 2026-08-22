@@ -109,6 +109,48 @@ test('a low-confidence or unresolved extraction is not selected as the current a
   assert.equal(pickCurrentAgreement(paired), undefined)
 })
 
+test('a linked Terms of Service/Privacy Policy document is preferred over a short same-page consent line', () => {
+  const extractions = [
+    extraction({
+      candidateId: 'consent-line',
+      sourceType: 'samePage',
+      title: 'Sign up',
+      normalizedText: 'By clicking Sign up, you agree to our terms of service and privacy policy.',
+    }),
+    extraction({
+      candidateId: 'terms-link',
+      sourceType: 'sameOriginLink',
+      title: 'Terms of Service',
+      normalizedText: 'Full terms of service text. '.repeat(50),
+    }),
+  ]
+  const identities = [
+    identity({ candidateId: 'consent-line', agreementId: 'agr:consent-line' }),
+    identity({ candidateId: 'terms-link', agreementId: 'agr:terms-link' }),
+  ]
+
+  const paired = pairExtractionsWithIdentities(extractions, identities)
+  const agreement = pickCurrentAgreement(paired)
+
+  assert.equal(agreement?.agreementId, 'agr:terms-link')
+})
+
+test('among two linked documents, the one with more substantial content is preferred', () => {
+  const extractions = [
+    extraction({ candidateId: 'short-link', sourceType: 'sameOriginLink', normalizedText: 'Short document text. '.repeat(20) }),
+    extraction({ candidateId: 'long-link', sourceType: 'sameOriginLink', normalizedText: 'Long document text. '.repeat(200) }),
+  ]
+  const identities = [
+    identity({ candidateId: 'short-link', agreementId: 'agr:short-link' }),
+    identity({ candidateId: 'long-link', agreementId: 'agr:long-link' }),
+  ]
+
+  const paired = pairExtractionsWithIdentities(extractions, identities)
+  const agreement = pickCurrentAgreement(paired)
+
+  assert.equal(agreement?.agreementId, 'agr:long-link')
+})
+
 test('findPairByAgreementId locates the correct extraction/identity pair by agreement identity, not array position', () => {
   const extractions = [extraction({ candidateId: 'a' }), extraction({ candidateId: 'b', title: 'Privacy' })]
   const identities = [identity({ candidateId: 'b', agreementId: 'agr:b' }), identity({ candidateId: 'a', agreementId: 'agr:a' })]

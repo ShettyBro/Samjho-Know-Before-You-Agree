@@ -27,18 +27,34 @@ export function findPairByAgreementId(paired: PairedCandidate[], agreementId: st
   return paired.find((pair) => pair.identity.agreementId === agreementId)
 }
 
+const LINKED_DOCUMENT_BONUS = 100000
+
+function selectionScore(extraction: AgreementExtractionResult): number {
+  const isLinkedDocument = extraction.sourceType !== 'samePage' && extraction.sourceType !== 'modal' && extraction.sourceType !== 'accordion'
+  return (isLinkedDocument ? LINKED_DOCUMENT_BONUS : 0) + extraction.normalizedText.length
+}
+
 export function pickCurrentAgreement(paired: PairedCandidate[]): AgreementContext | undefined {
-  for (let index = paired.length - 1; index >= 0; index -= 1) {
-    const { extraction, identity } = paired[index]
-    if (!isHighConfidenceExtraction(extraction)) continue
-    return {
-      agreementId: identity.agreementId,
-      contentHash: identity.contentHash,
-      analysisVersion: CURRENT_ANALYSIS_VERSION,
-      title: extraction.title,
-      sourceType: extraction.sourceType,
-      sourceUrl: extraction.resolvedUrl ?? extraction.sourceUrl,
+  let best: PairedCandidate | undefined
+  let bestScore = -Infinity
+
+  for (const pair of paired) {
+    if (!isHighConfidenceExtraction(pair.extraction)) continue
+    const score = selectionScore(pair.extraction)
+    if (score > bestScore) {
+      bestScore = score
+      best = pair
     }
   }
-  return undefined
+
+  if (!best) return undefined
+  const { extraction, identity } = best
+  return {
+    agreementId: identity.agreementId,
+    contentHash: identity.contentHash,
+    analysisVersion: CURRENT_ANALYSIS_VERSION,
+    title: extraction.title,
+    sourceType: extraction.sourceType,
+    sourceUrl: extraction.resolvedUrl ?? extraction.sourceUrl,
+  }
 }

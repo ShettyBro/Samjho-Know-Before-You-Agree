@@ -1,7 +1,7 @@
 import { extractText, normalizeText } from './textExtractor'
 
-const RENDER_TIMEOUT_MS = 4000
-const STABLE_CHECK_INTERVAL_MS = 300
+const RENDER_TIMEOUT_MS = 2500
+const STABLE_CHECK_INTERVAL_MS = 250
 const REQUIRED_STABLE_CHECKS = 2
 
 export type RenderedDocument = { text: string; normalizedText: string; title: string }
@@ -11,6 +11,18 @@ function readIframeDocument(iframe: HTMLIFrameElement): Document | undefined {
     return iframe.contentDocument ?? undefined
   } catch {
     return undefined
+  }
+}
+
+function hasNavigatedAwayFromTarget(iframe: HTMLIFrameElement, targetUrl: string): boolean {
+  try {
+    const currentHref = iframe.contentWindow?.location.href
+    if (!currentHref) return false
+    const current = new URL(currentHref)
+    const target = new URL(targetUrl)
+    return current.origin !== target.origin || current.pathname !== target.pathname
+  } catch {
+    return true
   }
 }
 
@@ -56,6 +68,11 @@ export function renderSameOriginUrl(url: string): Promise<RenderedDocument | und
     }
 
     function poll(): void {
+      if (hasNavigatedAwayFromTarget(iframe, url)) {
+        finish(undefined)
+        return
+      }
+
       const doc = readIframeDocument(iframe)
       const iframeWindow = iframe.contentWindow
       if (!doc || !doc.body || !iframeWindow) return
@@ -70,6 +87,10 @@ export function renderSameOriginUrl(url: string): Promise<RenderedDocument | und
     }
 
     iframe.addEventListener('load', () => {
+      if (hasNavigatedAwayFromTarget(iframe, url)) {
+        finish(undefined)
+        return
+      }
       pollTimer = setInterval(poll, STABLE_CHECK_INTERVAL_MS)
     })
     iframe.addEventListener('error', () => finish(undefined))

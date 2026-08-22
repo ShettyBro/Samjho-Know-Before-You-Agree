@@ -14,7 +14,7 @@ export const env = {
   gemini: {
     apiKey: process.env.GEMINI_API_KEY,
     model: process.env.GEMINI_MODEL ?? 'gemini-3.1-flash-lite',
-    timeoutMs: Number(process.env.GEMINI_TIMEOUT_MS ?? 20000),
+    timeoutMs: Number(process.env.GEMINI_TIMEOUT_MS ?? 15000),
     retryAttempts: Number(process.env.GEMINI_RETRY_ATTEMPTS ?? 1),
   },
   cache: {

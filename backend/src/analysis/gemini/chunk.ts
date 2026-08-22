@@ -1,4 +1,4 @@
-export const MAX_CHUNK_CHARS = 12000
+export const MAX_CHUNK_CHARS = 8000
 export const MAX_CHUNKS = 5
 
 function splitParagraphs(text: string, maxChunkChars: number): string[] {
