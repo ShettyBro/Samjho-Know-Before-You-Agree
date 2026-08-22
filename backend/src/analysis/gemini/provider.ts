@@ -2,7 +2,7 @@ import { deriveAllSections } from '../deriveSections.js'
 import { env } from '../../config/env.js'
 import { CURRENT_SCHEMA_VERSION } from '../limits.js'
 import type { AgreementAnalysisProvider } from '../provider.js'
-import type { AnalysisRequest } from '../types.js'
+import type { AnalysisRequest, SupportedLanguage } from '../types.js'
 import { adaptAttentionItem } from './adapter.js'
 import { splitForProcessing } from './chunk.js'
 import { requestChunkAnalysis } from './client.js'
@@ -10,10 +10,15 @@ import { mergeChunkResults } from './mergeChunks.js'
 import type { GeminiContentPayload } from './types.js'
 import { filterGroundedItems } from './verifyGrounding.js'
 
-const DISCLAIMER =
-  'Samjho helps you understand agreements more easily. This is not legal advice; consult a qualified professional for legal decisions.'
+const DISCLAIMERS: Record<SupportedLanguage, string> = {
+  en: 'Samjho helps you understand agreements more easily. This is not legal advice; consult a qualified professional for legal decisions.',
+  kn: 'ಒಪ್ಪಂದಗಳನ್ನು ಸುಲಭವಾಗಿ ಅರ್ಥಮಾಡಿಕೊಳ್ಳಲು ಸಮ್ಝೊ ಸಹಾಯ ಮಾಡುತ್ತದೆ. ಇದು ಕಾನೂನು ಸಲಹೆಯಲ್ಲ; ಕಾನೂನು ನಿರ್ಧಾರಗಳಿಗಾಗಿ ಅರ್ಹ ವೃತ್ತಿಪರರನ್ನು ಸಂಪರ್ಕಿಸಿ.',
+  hi: 'समझो समझौतों को अधिक आसानी से समझने में मदद करता है। यह कानूनी सलाह नहीं है; कानूनी निर्णयों के लिए किसी योग्य पेशेवर से सलाह लें।',
+}
 
-export function createGeminiProvider(analyzeChunk: (chunkText: string) => Promise<GeminiContentPayload>): AgreementAnalysisProvider {
+export function createGeminiProvider(
+  analyzeChunk: (chunkText: string, language: SupportedLanguage) => Promise<GeminiContentPayload>,
+): AgreementAnalysisProvider {
   return {
     name: 'gemini',
     async analyze(request: AnalysisRequest) {
@@ -21,7 +26,7 @@ export function createGeminiProvider(analyzeChunk: (chunkText: string) => Promis
 
       const perChunkResults = await Promise.all(
         chunks.map(async (chunkText) => {
-          const raw = await analyzeChunk(chunkText)
+          const raw = await analyzeChunk(chunkText, request.language)
           const { items, droppedCount } = filterGroundedItems(raw.attentionItems, chunkText)
           return { summary: raw.summary, attentionItems: items, droppedCount }
         }),
@@ -67,7 +72,7 @@ export function createGeminiProvider(analyzeChunk: (chunkText: string) => Promis
         dataSharing: sections.dataSharing,
         disputeResolution: sections.disputeResolution,
         limitations,
-        disclaimer: DISCLAIMER,
+        disclaimer: DISCLAIMERS[request.language],
         generatedAt,
         providerMetadata: {
           provider: 'gemini',

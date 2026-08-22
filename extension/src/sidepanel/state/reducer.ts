@@ -53,6 +53,13 @@ export function panelReducer(state: PanelState, action: PanelAction): PanelState
       return { kind: 'PREPARING', agreement: state.agreement, attempt: state.attempt + 1 }
     }
 
+    case 'LANGUAGE_CHANGED': {
+      const agreement = agreementOf(state)
+      if (!agreement) return state
+      const currentAttempt = state.kind === 'PREPARING' || state.kind === 'PREFETCHING' || state.kind === 'ERROR' ? state.attempt : -1
+      return { kind: 'PREPARING', agreement, attempt: currentAttempt + 1 }
+    }
+
     default:
       return state
   }

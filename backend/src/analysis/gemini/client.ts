@@ -1,6 +1,7 @@
 import { GoogleGenAI } from '@google/genai'
 import { env } from '../../config/env.js'
 import { ApiError } from '../errors.js'
+import type { SupportedLanguage } from '../types.js'
 import { classifyGeminiError, type GeminiErrorClassification } from './errorClassification.js'
 import { buildSystemInstruction, buildUserContent } from './prompt.js'
 import { GEMINI_RESPONSE_SCHEMA } from './schema.js'
@@ -41,7 +42,7 @@ function getClient(): GoogleGenAI {
   return client
 }
 
-export async function requestChunkAnalysis(chunkText: string): Promise<GeminiContentPayload> {
+export async function requestChunkAnalysis(chunkText: string, language: SupportedLanguage): Promise<GeminiContentPayload> {
   const ai = getClient()
   const startedAt = Date.now()
 
@@ -51,7 +52,7 @@ export async function requestChunkAnalysis(chunkText: string): Promise<GeminiCon
       model: env.gemini.model,
       contents: buildUserContent(chunkText),
       config: {
-        systemInstruction: buildSystemInstruction(),
+        systemInstruction: buildSystemInstruction(language),
         responseMimeType: 'application/json',
         responseSchema: GEMINI_RESPONSE_SCHEMA,
         temperature: 0.2,

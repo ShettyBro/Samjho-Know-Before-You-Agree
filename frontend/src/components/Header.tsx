@@ -6,6 +6,7 @@ export function Header({ language }: { language: SupportedLanguage }) {
   return (
     <header className="samjho-hero">
       <p className="samjho-hero__tagline">{UI_TEXT[language].tagline}</p>
+      <p className="samjho-hero__description">{UI_TEXT[language].heroDescription}</p>
     </header>
   )
 }

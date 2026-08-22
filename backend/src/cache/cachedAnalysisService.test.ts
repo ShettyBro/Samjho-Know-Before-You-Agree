@@ -67,7 +67,7 @@ function createFakeProvider(behavior: (request: AnalysisRequest, callIndex: numb
 test('a new agreement is a cache miss', async () => {
   const { provider } = createFakeProvider()
   const service = createCachedAnalysisService({ cache: new InMemoryAnalysisCache(50), provider, ttlMs: 60000 })
-  const cacheKey = 'agr:a:sha256:a:v1'
+  const cacheKey = 'agr:a:sha256:a:v1:en'
   assert.equal(service.statusFor(cacheKey), 'MISS')
 })
 
@@ -130,6 +130,28 @@ test('a changed analysisVersion for the same agreementId and contentHash is a ca
   assert.equal(callCount(), 2)
 })
 
+test('a changed language for the same agreementId, contentHash, and analysisVersion is a cache miss and produces a fresh, correctly-languaged result', async () => {
+  const { provider, callCount } = createFakeProvider((request) => 'success')
+  const service = createCachedAnalysisService({ cache: new InMemoryAnalysisCache(50), provider, ttlMs: 60000 })
+
+  const englishResult = await service.getOrAnalyze(baseRequest({ language: 'en' }))
+  assert.equal(callCount(), 1)
+
+  const kannadaResult = await service.getOrAnalyze(baseRequest({ language: 'kn' }))
+  assert.equal(callCount(), 2)
+
+  assert.equal(englishResult.ok, true)
+  assert.equal(kannadaResult.ok, true)
+  if (englishResult.ok && kannadaResult.ok) {
+    assert.equal(englishResult.value.result.agreementId, kannadaResult.value.result.agreementId)
+    assert.notEqual(englishResult.value.cacheKey, kannadaResult.value.cacheKey)
+  }
+
+  const secondEnglishResult = await service.getOrAnalyze(baseRequest({ language: 'en' }))
+  assert.equal(callCount(), 2)
+  assert.equal(secondEnglishResult.ok, true)
+})
+
 test('a failed provider request produces no successful cache entry', async () => {
   const { provider } = createFakeProvider(() => 'throw')
   const cache = new InMemoryAnalysisCache(50)
@@ -178,8 +200,8 @@ test('inserting beyond the configured cache limit evicts the least recently used
   await service.getOrAnalyze(baseRequest({ agreementId: 'a3', contentHash: 'h3' }))
 
   assert.equal(cache.size(), 2)
-  assert.equal(cache.has('a1:h1:v1'), false)
-  assert.equal(cache.has('a3:h3:v1'), true)
+  assert.equal(cache.has('a1:h1:v1:en'), false)
+  assert.equal(cache.has('a3:h3:v1:en'), true)
 })
 
 test('an analysis for one document/agreement finishing after another begins does not attach its result to the other', async () => {
@@ -337,7 +359,7 @@ test('statusFor reports RATE_LIMITED while a cooldown for that cache key is acti
   const service = createCachedAnalysisService({ cache: new InMemoryAnalysisCache(50), provider, ttlMs: 60000 })
 
   await service.getOrAnalyze(baseRequest())
-  assert.equal(service.statusFor('agr:a:sha256:a:v1'), 'RATE_LIMITED')
+  assert.equal(service.statusFor('agr:a:sha256:a:v1:en'), 'RATE_LIMITED')
 })
 
 test('the rate-limit cooldown expires after its configured duration, allowing a fresh analysis attempt', async () => {

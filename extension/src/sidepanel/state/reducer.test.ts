@@ -157,3 +157,22 @@ test('a cached result for the agreement already shown as ready is a no-op', () =
   const next = panelReducer(ready, { type: 'CACHED_RESULT_FOUND', agreement: agreement(), result })
   assert.deepEqual(next, ready)
 })
+
+test('a language change while ready restarts analysis for the same agreement', () => {
+  const result = { agreementId: 'agr:a' } as never
+  const ready: PanelState = { kind: 'READY', agreement: agreement(), result }
+  const next = panelReducer(ready, { type: 'LANGUAGE_CHANGED' })
+  assert.deepEqual(next, { kind: 'PREPARING', agreement: agreement(), attempt: 0 })
+})
+
+test('a language change while already preparing bumps the attempt so the earlier one is discarded', () => {
+  const preparing: PanelState = { kind: 'PREPARING', agreement: agreement(), attempt: 0 }
+  const next = panelReducer(preparing, { type: 'LANGUAGE_CHANGED' })
+  assert.deepEqual(next, { kind: 'PREPARING', agreement: agreement(), attempt: 1 })
+})
+
+test('a language change with no agreement in context is a no-op', () => {
+  const idle: PanelState = { kind: 'IDLE' }
+  const next = panelReducer(idle, { type: 'LANGUAGE_CHANGED' })
+  assert.deepEqual(next, idle)
+})

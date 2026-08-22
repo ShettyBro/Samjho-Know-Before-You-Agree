@@ -168,12 +168,10 @@ test('the navbar shows the brand name and a log in button when signed out', () =
       language="en"
       onLanguageChange={() => undefined}
       user={null}
-      authPending={false}
-      authError={null}
-      onLogin={async () => true}
-      onRegister={async () => true}
       onLogout={async () => undefined}
       onOpenHistory={() => undefined}
+      onOpenAuth={() => undefined}
+      onGoHome={() => undefined}
     />,
   )
   assert.ok(markup.includes('Samjho'))
@@ -186,12 +184,10 @@ test('the navbar shows the signed-in email and a logout button when a user is pr
       language="en"
       onLanguageChange={() => undefined}
       user={{ id: 'usr_1', email: 'user@example.com', createdAt: '2024-01-01T00:00:00.000Z' }}
-      authPending={false}
-      authError={null}
-      onLogin={async () => true}
-      onRegister={async () => true}
       onLogout={async () => undefined}
       onOpenHistory={() => undefined}
+      onOpenAuth={() => undefined}
+      onGoHome={() => undefined}
     />,
   )
   assert.ok(markup.includes('user@example.com'))

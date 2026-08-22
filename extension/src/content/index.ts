@@ -1,4 +1,5 @@
 import { sendRequest } from '../shared/rpc'
+import { isSamjhoWebApp } from '../shared/dom'
 import { startDiscovery } from './discovery'
 import { handleDiscoveredCandidates } from './extraction'
 import { handleExtractionResults } from './identity'
@@ -9,9 +10,11 @@ async function runContentSelfTest(): Promise<void> {
   console.log('[Samjho] content -> service worker', response)
 }
 
-void runContentSelfTest()
-initPopupFeature()
-startDiscovery((live) => {
-  updateLiveCandidates(live)
-  void handleDiscoveredCandidates(live, handleExtractionResults)
-})
+if (!isSamjhoWebApp()) {
+  void runContentSelfTest()
+  initPopupFeature()
+  startDiscovery((live) => {
+    updateLiveCandidates(live)
+    void handleDiscoveredCandidates(live, handleExtractionResults)
+  })
+}

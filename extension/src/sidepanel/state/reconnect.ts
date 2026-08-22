@@ -1,9 +1,6 @@
 import { sendRequest } from '../../shared/rpc'
 
 export async function reconnectContentScript(): Promise<boolean> {
-  const granted = await chrome.permissions.request({ origins: ['<all_urls>'] })
-  if (!granted) return false
-
   const tabs = await chrome.tabs.query({ active: true, currentWindow: true })
   const tabId = tabs[0]?.id
   if (tabId === undefined) return false

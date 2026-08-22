@@ -2,13 +2,11 @@ import type { SupportedLanguage } from '../analysis/types.js'
 import { ApiError } from '../analysis/errors.js'
 import type { ValidationResult } from '../analysis/validationResult.js'
 import { requestChatAnswer, type ChatModelResponse } from './client.js'
-import { CHAT_DISCLAIMER } from './limits.js'
+import { CHAT_DISCLAIMERS, UNVERIFIED_MESSAGES } from './limits.js'
 import { validateChatRequest } from './requestValidation.js'
 import { validateChatModelResponse } from './responseValidation.js'
 import type { ChatMessage, ChatResult } from './types.js'
 import { isGrounded } from './verifyGrounding.js'
-
-const UNVERIFIED_MESSAGE = "Samjho couldn't verify this answer against the agreement text."
 
 export type ChatAnswerFn = (
   agreementText: string,
@@ -49,7 +47,7 @@ export async function answerChatQuestion(
         sourceReference: null,
         confidence: modelResponse.confidence,
         notFound: true,
-        disclaimer: CHAT_DISCLAIMER,
+        disclaimer: CHAT_DISCLAIMERS[request.language],
       },
     }
   }
@@ -61,12 +59,12 @@ export async function answerChatQuestion(
         agreementId: request.agreementId,
         contentHash: request.contentHash,
         analysisVersion: request.analysisVersion,
-        answer: UNVERIFIED_MESSAGE,
+        answer: UNVERIFIED_MESSAGES[request.language],
         sourceText: '',
         sourceReference: null,
         confidence: 'low',
         notFound: true,
-        disclaimer: CHAT_DISCLAIMER,
+        disclaimer: CHAT_DISCLAIMERS[request.language],
       },
     }
   }
@@ -82,7 +80,7 @@ export async function answerChatQuestion(
       sourceReference: modelResponse.sourceReference,
       confidence: modelResponse.confidence,
       notFound: false,
-      disclaimer: CHAT_DISCLAIMER,
+      disclaimer: CHAT_DISCLAIMERS[request.language],
     },
   }
 }

@@ -29,11 +29,12 @@ export type PanelAction =
   | { type: 'ANALYSIS_SUCCEEDED'; agreement: AgreementContext; attempt: number; result: AnalysisResultPayload }
   | { type: 'ANALYSIS_FAILED'; agreement: AgreementContext; attempt: number; message: string }
   | { type: 'RETRY_REQUESTED' }
+  | { type: 'LANGUAGE_CHANGED' }
 
 export function isSameAgreement(a: AgreementContext, b: AgreementContext): boolean {
   return a.agreementId === b.agreementId && a.contentHash === b.contentHash && a.analysisVersion === b.analysisVersion
 }
 
-export function resultCacheKey(agreement: AgreementContext): string {
-  return `${agreement.agreementId}:${agreement.contentHash}:${agreement.analysisVersion}`
+export function resultCacheKey(agreement: AgreementContext, language: string): string {
+  return `${agreement.agreementId}:${agreement.contentHash}:${agreement.analysisVersion}:${language}`
 }

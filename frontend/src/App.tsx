@@ -1,7 +1,8 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { AnimatePresence } from 'framer-motion'
 import { AnalyzeInput } from './components/AnalyzeInput.js'
 import { AskSamjhoLauncher } from './components/AskSamjhoLauncher.js'
+import { AuthModal } from './components/AuthModal.js'
 import { Header } from './components/Header.js'
 import { HistoryModal } from './components/HistoryModal.js'
 import { Navbar } from './components/Navbar.js'
@@ -31,6 +32,13 @@ function App() {
   const { state, submitText, submitPdf, reset } = useAnalysis(language, text)
   const busy = state.kind === 'UPLOADING' || state.kind === 'EXTRACTING' || state.kind === 'PREPARING' || state.kind === 'PREFETCHING'
   const [historyOpen, setHistoryOpen] = useState(false)
+  const [authOpen, setAuthOpen] = useState(false)
+
+  useEffect(() => {
+    if (state.kind === 'READY' && auth.user) {
+      void history.refresh()
+    }
+  }, [state.kind === 'READY' ? state.result.agreementId : null, auth.user?.id])
 
   async function handleSaveToggle(): Promise<void> {
     if (state.kind !== 'READY') return
@@ -53,12 +61,13 @@ function App() {
         language={language}
         onLanguageChange={setLanguage}
         user={auth.user}
-        authPending={auth.pending}
-        authError={auth.error}
-        onLogin={auth.login}
-        onRegister={auth.register}
         onLogout={auth.logout}
-        onOpenHistory={() => setHistoryOpen(true)}
+        onOpenHistory={() => {
+          void history.refresh()
+          setHistoryOpen(true)
+        }}
+        onOpenAuth={() => setAuthOpen(true)}
+        onGoHome={reset}
       />
 
       <main className="samjho-page">
@@ -86,6 +95,29 @@ function App() {
           </>
         )}
       </main>
+
+      <AnimatePresence>
+        {authOpen ? (
+          <AuthModal
+            language={language}
+            user={auth.user}
+            pending={auth.pending}
+            error={auth.error}
+            onLogin={async (email, password) => {
+              const ok = await auth.login(email, password)
+              if (ok) setAuthOpen(false)
+              return ok
+            }}
+            onRegister={async (email, password) => {
+              const ok = await auth.register(email, password)
+              if (ok) setAuthOpen(false)
+              return ok
+            }}
+            onLogout={auth.logout}
+            onClose={() => setAuthOpen(false)}
+          />
+        ) : null}
+      </AnimatePresence>
 
       <AnimatePresence>
         {historyOpen ? (

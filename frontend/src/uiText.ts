@@ -2,6 +2,7 @@ import type { SupportedLanguage } from './api/types.js'
 
 export type UiText = {
   tagline: string
+  heroDescription: string
   navPaste: string
   navPdf: string
   pasteLabel: string
@@ -58,11 +59,13 @@ export type UiText = {
   analyzedLabel: string
   savedAtLabel: string
   backButton: string
+  goHomeAriaLabel: string
 }
 
 export const UI_TEXT: Record<SupportedLanguage, UiText> = {
   en: {
     tagline: 'Know Before You Agree',
+    heroDescription: 'Samjho reads Terms of Service, Privacy Policies, and other agreements for you, then highlights what actually matters — auto-renewals, fees, data sharing, cancellation terms — in plain English, ಕನ್ನಡ, or हिन्दी, each finding linked back to the exact source clause.',
     navPaste: 'Paste text',
     navPdf: 'Upload PDF',
     pasteLabel: 'Paste the agreement text',
@@ -119,9 +122,11 @@ export const UI_TEXT: Record<SupportedLanguage, UiText> = {
     analyzedLabel: 'Analyzed',
     savedAtLabel: 'Saved',
     backButton: 'Back',
+    goHomeAriaLabel: 'Go to home',
   },
   kn: {
     tagline: 'ಒಪ್ಪುವ ಮೊದಲು ತಿಳಿಯಿರಿ',
+    heroDescription: 'ಸಮ್ಝೊ ನಿಮಗಾಗಿ ಸೇವಾ ನಿಯಮಗಳು, ಗೌಪ್ಯತಾ ನೀತಿಗಳು ಮತ್ತು ಇತರ ಒಪ್ಪಂದಗಳನ್ನು ಓದಿ, ಸ್ವಯಂ ನವೀಕರಣ, ಶುಲ್ಕಗಳು, ಡೇಟಾ ಹಂಚಿಕೆ, ರದ್ದತಿ ನಿಯಮಗಳಂತಹ ಮುಖ್ಯ ಅಂಶಗಳನ್ನು ಸರಳ ಭಾಷೆಯಲ್ಲಿ ಮೂಲ ವಾಕ್ಯದೊಂದಿಗೆ ತೋರಿಸುತ್ತದೆ.',
     navPaste: 'ಪಠ್ಯ ಅಂಟಿಸಿ',
     navPdf: 'PDF ಅಪ್‌ಲೋಡ್ ಮಾಡಿ',
     pasteLabel: 'ಒಪ್ಪಂದದ ಪಠ್ಯವನ್ನು ಅಂಟಿಸಿ',
@@ -182,9 +187,11 @@ export const UI_TEXT: Record<SupportedLanguage, UiText> = {
     analyzedLabel: 'ವಿಶ್ಲೇಷಿಸಲಾಗಿದೆ',
     savedAtLabel: 'ಉಳಿಸಲಾಗಿದೆ',
     backButton: 'ಹಿಂದೆ',
+    goHomeAriaLabel: 'ಮುಖಪುಟಕ್ಕೆ ಹೋಗಿ',
   },
   hi: {
     tagline: 'सहमत होने से पहले समझें',
+    heroDescription: 'समझो आपके लिए सेवा शर्तें, गोपनीयता नीतियां और अन्य समझौते पढ़ता है, फिर स्वतः नवीनीकरण, शुल्क, डेटा साझाकरण, रद्दीकरण जैसी ज़रूरी बातों को सरल भाषा में मूल वाक्य के साथ दिखाता है।',
     navPaste: 'पाठ चिपकाएं',
     navPdf: 'PDF अपलोड करें',
     pasteLabel: 'समझौते का पाठ चिपकाएं',
@@ -245,5 +252,6 @@ export const UI_TEXT: Record<SupportedLanguage, UiText> = {
     analyzedLabel: 'विश्लेषित',
     savedAtLabel: 'सहेजा गया',
     backButton: 'वापस',
+    goHomeAriaLabel: 'होम पर जाएं',
   },
 }

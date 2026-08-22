@@ -16,14 +16,29 @@ const GENERIC_FAILURE_MESSAGE = "We couldn't analyze this agreement right now."
 
 const INITIAL_STATE: PanelState = { kind: 'IDLE' }
 
+async function tryAutoReinject(tabId: number): Promise<boolean> {
+  const response = await sendRequest('sidepanel', { type: 'REINJECT_CONTENT_SCRIPT', tabId })
+  return response.ok && response.payload.type === 'REINJECT_CONTENT_SCRIPT_ACK' && response.payload.injected
+}
+
 export function usePanelState(language: SupportedLanguage, onLanguageRequested?: (language: SupportedLanguage) => void) {
   const [state, dispatch] = useReducer(panelReducer, INITIAL_STATE)
   const activeTabIdRef = useRef<number | undefined>(undefined)
   const pairedRef = useRef<PairedCandidate[]>([])
   const detectionStartedAtRef = useRef<number>(Date.now())
+  const autoReinjectAttemptedRef = useRef<boolean>(false)
   const resultCacheRef = useRef<Map<string, CacheEntry>>(new Map())
   const onLanguageRequestedRef = useRef(onLanguageRequested)
   onLanguageRequestedRef.current = onLanguageRequested
+  const previousLanguageRef = useRef<SupportedLanguage>(language)
+  const languageRef = useRef<SupportedLanguage>(language)
+  languageRef.current = language
+
+  useEffect(() => {
+    if (previousLanguageRef.current === language) return
+    previousLanguageRef.current = language
+    dispatch({ type: 'LANGUAGE_CHANGED' })
+  }, [language])
 
   useEffect(() => {
     let cancelled = false
@@ -47,7 +62,7 @@ export function usePanelState(language: SupportedLanguage, onLanguageRequested?:
 
         const agreement = pickCurrentAgreement(paired)
         if (agreement) {
-          const cachedEntry = resultCacheRef.current.get(resultCacheKey(agreement))
+          const cachedEntry = resultCacheRef.current.get(resultCacheKey(agreement, languageRef.current))
           if (cachedEntry) {
             dispatch({ type: 'CACHED_RESULT_FOUND', agreement, result: cachedEntry.result })
           } else {
@@ -64,6 +79,15 @@ export function usePanelState(language: SupportedLanguage, onLanguageRequested?:
 
         elapsed = Date.now() - detectionStartedAtRef.current
         if (elapsed >= DETECTION_TIMEOUT_MS) {
+          if (!supported && !autoReinjectAttemptedRef.current) {
+            autoReinjectAttemptedRef.current = true
+            const injected = await tryAutoReinject(tabId)
+            if (injected) {
+              detectionStartedAtRef.current = Date.now()
+              pollTimer = setTimeout(() => void pollTabState(tabId), ACTIVE_POLL_INTERVAL_MS)
+              return
+            }
+          }
           dispatch({ type: 'DETECTION_TIMED_OUT', hasContentScript: supported })
         }
       }
@@ -76,6 +100,7 @@ export function usePanelState(language: SupportedLanguage, onLanguageRequested?:
       activeTabIdRef.current = tabId
       pairedRef.current = []
       detectionStartedAtRef.current = Date.now()
+      autoReinjectAttemptedRef.current = false
       dispatch({ type: 'TAB_CHANGED' })
       void pollTabState(tabId)
     }
@@ -133,7 +158,7 @@ export function usePanelState(language: SupportedLanguage, onLanguageRequested?:
     let cancelled = false
     sendRequest('sidepanel', { type: 'ANALYZE_REQUEST', request }, ANALYZE_TIMEOUT_MS).then((response) => {
       if (response.ok && response.payload.type === 'ANALYZE_RESULT') {
-        resultCacheRef.current.set(resultCacheKey(agreement), {
+        resultCacheRef.current.set(resultCacheKey(agreement, language), {
           result: response.payload.result,
           agreementText: request.normalizedText,
         })
@@ -157,7 +182,7 @@ export function usePanelState(language: SupportedLanguage, onLanguageRequested?:
   }
 
   function getAgreementText(agreement: AgreementContext): string | undefined {
-    return resultCacheRef.current.get(resultCacheKey(agreement))?.agreementText
+    return resultCacheRef.current.get(resultCacheKey(agreement, language))?.agreementText
   }
 
   return { state, retry, getAgreementText }

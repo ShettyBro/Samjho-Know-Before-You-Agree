@@ -51,9 +51,7 @@ after(() => {
 test('the real client constructs a well-formed request and never reaches the network in this test', async () => {
   const { requestChunkAnalysis } = await import('./client.js')
 
-  const result = await requestChunkAnalysis(
-    'Sample Test Service Terms. Your subscription renews automatically each month.',
-  )
+  const result = await requestChunkAnalysis('Sample Test Service Terms. Your subscription renews automatically each month.', 'en')
 
   assert.equal(fetchCallCount, 1)
   assert.deepEqual(result, FAKE_MODEL_RESPONSE)

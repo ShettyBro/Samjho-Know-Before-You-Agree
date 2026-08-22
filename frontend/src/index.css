@@ -105,13 +105,25 @@ body {
   border-radius: 0;
   border-style: solid;
   border-width: 0 0 1px 0;
-  box-shadow: 0 4px 20px rgba(50, 47, 69, 0.12);
+  background: linear-gradient(180deg, rgba(184, 134, 60, 0.55), rgba(184, 134, 60, 0.28));
+  box-shadow: 0 4px 20px rgba(50, 47, 69, 0.16);
 }
 
 .samjho-navbar__brand {
   display: flex;
   align-items: center;
   gap: 10px;
+  border: none;
+  background: transparent;
+  padding: 4px 2px;
+  margin: -4px -2px;
+  border-radius: 10px;
+  cursor: pointer;
+  font: inherit;
+}
+
+.samjho-navbar__brand:hover {
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .samjho-navbar__logo {
@@ -156,7 +168,9 @@ body {
 .samjho-modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(23, 20, 28, 0.4);
+  background: rgba(15, 12, 8, 0.72);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -168,14 +182,14 @@ body {
   position: relative;
   width: 100%;
   max-width: 380px;
+  max-height: 88vh;
+  overflow-y: auto;
   border-radius: 18px;
   padding: 28px 22px 22px;
 }
 
 .samjho-modal--wide {
   max-width: 640px;
-  max-height: 80vh;
-  overflow-y: auto;
 }
 
 .samjho-modal__heading {
@@ -274,10 +288,18 @@ body {
   padding: 8px 4px 0;
 }
 
+.samjho-hero__description {
+  margin: 8px 0 0;
+  color: var(--samjho-text-muted);
+  font-size: 14px;
+  max-width: 62ch;
+}
+
 .samjho-hero__tagline {
   margin: 0;
-  color: var(--samjho-text-muted);
-  font-size: 15px;
+  color: var(--samjho-text);
+  font-size: 19px;
+  font-weight: 600;
 }
 
 .samjho-language-tabs {
