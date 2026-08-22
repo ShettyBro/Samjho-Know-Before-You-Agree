@@ -4,8 +4,6 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/status-live-brightgreen?style=for-the-badge" />
-  <img src="https://img.shields.io/badge/tests-397%20passing-success?style=for-the-badge" />
-  <img src="https://img.shields.io/badge/AI-Gemini-blue?style=for-the-badge&logo=google" />
   <img src="https://img.shields.io/badge/deploy-AWS%20Elastic%20Beanstalk-orange?style=for-the-badge&logo=amazonaws" />
   <img src="https://img.shields.io/badge/frontend-Vercel-black?style=for-the-badge&logo=vercel" />
 </p>
@@ -217,21 +215,6 @@ VITE_API_BASE_URL=https://api1.sudeepbro.works
 
 ---
 
-## 🧪 Tests
-
-```bash
-# Backend — 228 tests
-cd backend && npm test
-
-# Frontend — 30 tests
-cd frontend && npm test
-
-# Extension — 139 tests
-cd extension && npm test
-```
-
-**Total: 397 / 397 passing** ✅
-
 ---
 
 ## 📡 API Reference
@@ -256,10 +239,8 @@ Base URL: `https://api1.sudeepbro.works`
 
 ## ⚠️ Known Limitations
 
-- Web paste/PDF version tracking cannot follow an edited resubmission (content-derived identity)
-- Extension has no login UI — history/saved is web-app only
-- Real TTS/audio is an unimplemented placeholder
-- No OCR, second AI provider, semantic diffing, or notifications
+- Web paste/PDF version tracking cannot follow an edited resubmission
+- Extension has no login UI — history and saved agreements are web-app only
 
 ---
 
