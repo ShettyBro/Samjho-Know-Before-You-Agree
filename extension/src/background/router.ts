@@ -1,4 +1,4 @@
-import { checkBackendHealth, prefetchAnalysis } from '../shared/backendClient'
+import { analyzeAgreement, checkBackendHealth, prefetchAnalysis } from '../shared/backendClient'
 import type { ConsentCandidate } from '../shared/discoveryTypes'
 import type { AgreementExtractionResult } from '../shared/extractionTypes'
 import type { AgreementIdentityResult } from '../shared/identityTypes'
@@ -15,9 +15,22 @@ const latestCandidatesByTab = new Map<number, ConsentCandidate[]>()
 const latestExtractionsByTab = new Map<number, AgreementExtractionResult[]>()
 const latestIdentitiesByTab = new Map<number, AgreementIdentityResult[]>()
 const latestPrefetchStatusByTab = new Map<number, PrefetchStatusEntry[]>()
+const contentScriptSeenTabs = new Set<number>()
+
+export function clearTabState(tabId: number): void {
+  latestCandidatesByTab.delete(tabId)
+  latestExtractionsByTab.delete(tabId)
+  latestIdentitiesByTab.delete(tabId)
+  latestPrefetchStatusByTab.delete(tabId)
+  contentScriptSeenTabs.delete(tabId)
+}
 
 async function buildResponse(request: SamjhoRequest, tabId: number | undefined): Promise<SamjhoResponse> {
-  const { requestId, payload } = request
+  const { requestId, payload, origin } = request
+
+  if (origin === 'content' && tabId !== undefined) {
+    contentScriptSeenTabs.add(tabId)
+  }
 
   if (!isKnownRequestPayloadType(payload.type)) {
     return {
@@ -88,20 +101,55 @@ async function buildResponse(request: SamjhoRequest, tabId: number | undefined):
     }
   }
 
-  const results = await Promise.all(
-    payload.requests.map(async (request): Promise<PrefetchStatusEntry> => {
-      const outcome = await prefetchAnalysis(request)
-      if (!outcome) return { agreementId: request.agreementId, status: 'UNAVAILABLE' }
-      return { agreementId: request.agreementId, cacheKey: outcome.cacheKey, status: outcome.status }
-    }),
-  )
-  if (tabId !== undefined) latestPrefetchStatusByTab.set(tabId, results)
-  console.log('[Samjho] prefetch requested', { tabId, results })
+  if (payload.type === 'PREFETCH_REQUEST') {
+    const results = await Promise.all(
+      payload.requests.map(async (request): Promise<PrefetchStatusEntry> => {
+        const outcome = await prefetchAnalysis(request)
+        if (!outcome) return { agreementId: request.agreementId, status: 'UNAVAILABLE' }
+        return { agreementId: request.agreementId, cacheKey: outcome.cacheKey, status: outcome.status }
+      }),
+    )
+    if (tabId !== undefined) latestPrefetchStatusByTab.set(tabId, results)
+    console.log('[Samjho] prefetch requested', { tabId, results })
+    return {
+      kind: 'response',
+      requestId,
+      ok: true,
+      payload: { type: 'PREFETCH_ACK', results },
+    }
+  }
+
+  if (payload.type === 'GET_TAB_STATE') {
+    const { tabId: requestedTabId } = payload
+    return {
+      kind: 'response',
+      requestId,
+      ok: true,
+      payload: {
+        type: 'TAB_STATE',
+        hasContentScript: contentScriptSeenTabs.has(requestedTabId),
+        candidates: latestCandidatesByTab.get(requestedTabId) ?? [],
+        extractions: latestExtractionsByTab.get(requestedTabId) ?? [],
+        identities: latestIdentitiesByTab.get(requestedTabId) ?? [],
+        prefetchStatus: latestPrefetchStatusByTab.get(requestedTabId) ?? [],
+      },
+    }
+  }
+
+  const outcome = await analyzeAgreement(payload.request)
+  if (!outcome.ok) {
+    return {
+      kind: 'response',
+      requestId,
+      ok: false,
+      payload: { type: 'ERROR', code: 'ANALYSIS_FAILED', message: outcome.message },
+    }
+  }
   return {
     kind: 'response',
     requestId,
     ok: true,
-    payload: { type: 'PREFETCH_ACK', results },
+    payload: { type: 'ANALYZE_RESULT', result: outcome.result },
   }
 }
 

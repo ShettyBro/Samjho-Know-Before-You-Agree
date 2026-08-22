@@ -1,9 +1,12 @@
+import { isAnalysisResultPayload, type AnalysisResultPayload } from './analysisResultTypes'
 import type { AnalysisRequestPayload } from './analysisRequestTypes'
 import type { BackendStatus } from './messages'
 
 const BACKEND_BASE_URL = 'http://localhost:4000'
 
 export type PrefetchResult = { cacheKey: string; status: string }
+
+export type AnalyzeOutcome = { ok: true; result: AnalysisResultPayload } | { ok: false; message: string }
 
 export async function checkBackendHealth(): Promise<BackendStatus> {
   try {
@@ -48,5 +51,31 @@ export async function prefetchAnalysis(request: AnalysisRequestPayload): Promise
     return undefined
   } catch {
     return undefined
+  }
+}
+
+const GENERIC_FAILURE_MESSAGE = "We couldn't analyze this agreement right now."
+
+export async function analyzeAgreement(request: AnalysisRequestPayload): Promise<AnalyzeOutcome> {
+  try {
+    const response = await fetch(`${BACKEND_BASE_URL}/api/v1/agreements/analyze`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(request),
+    })
+
+    const data: unknown = await response.json().catch(() => undefined)
+
+    if (!response.ok) {
+      return { ok: false, message: GENERIC_FAILURE_MESSAGE }
+    }
+
+    if (!isAnalysisResultPayload(data)) {
+      return { ok: false, message: GENERIC_FAILURE_MESSAGE }
+    }
+
+    return { ok: true, result: data }
+  } catch {
+    return { ok: false, message: GENERIC_FAILURE_MESSAGE }
   }
 }

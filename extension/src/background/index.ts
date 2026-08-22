@@ -1,4 +1,4 @@
-import { handleIncomingMessage } from './router'
+import { clearTabState, handleIncomingMessage } from './router'
 
 chrome.sidePanel
   .setPanelBehavior({ openPanelOnActionClick: true })
@@ -6,4 +6,12 @@ chrome.sidePanel
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   return handleIncomingMessage(message, sender, sendResponse)
+})
+
+chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
+  if (changeInfo.status === 'loading') clearTabState(tabId)
+})
+
+chrome.tabs.onRemoved.addListener((tabId) => {
+  clearTabState(tabId)
 })

@@ -1,4 +1,5 @@
 import type { AnalysisRequestPayload } from './analysisRequestTypes'
+import type { AnalysisResultPayload } from './analysisResultTypes'
 import type { ConsentCandidate } from './discoveryTypes'
 import type { AgreementExtractionResult } from './extractionTypes'
 import type { AgreementIdentityResult } from './identityTypes'
@@ -11,6 +12,8 @@ export type DiscoveryUpdateRequestPayload = { type: 'DISCOVERY_UPDATE'; candidat
 export type ExtractionUpdateRequestPayload = { type: 'EXTRACTION_UPDATE'; results: AgreementExtractionResult[] }
 export type IdentityUpdateRequestPayload = { type: 'IDENTITY_UPDATE'; identities: AgreementIdentityResult[] }
 export type PrefetchRequestPayload = { type: 'PREFETCH_REQUEST'; requests: AnalysisRequestPayload[] }
+export type GetTabStateRequestPayload = { type: 'GET_TAB_STATE'; tabId: number }
+export type AnalyzeRequestPayload = { type: 'ANALYZE_REQUEST'; request: AnalysisRequestPayload }
 
 export type RequestPayload =
   | PingRequestPayload
@@ -19,6 +22,8 @@ export type RequestPayload =
   | ExtractionUpdateRequestPayload
   | IdentityUpdateRequestPayload
   | PrefetchRequestPayload
+  | GetTabStateRequestPayload
+  | AnalyzeRequestPayload
 
 export type PongResponsePayload = { type: 'PONG'; respondedAt: number }
 
@@ -35,6 +40,15 @@ export type ExtractionAckResponsePayload = { type: 'EXTRACTION_ACK'; receivedCou
 export type IdentityAckResponsePayload = { type: 'IDENTITY_ACK'; receivedCount: number }
 export type PrefetchStatusEntry = { agreementId: string; cacheKey?: string; status: string }
 export type PrefetchAckResponsePayload = { type: 'PREFETCH_ACK'; results: PrefetchStatusEntry[] }
+export type TabStateResponsePayload = {
+  type: 'TAB_STATE'
+  hasContentScript: boolean
+  candidates: ConsentCandidate[]
+  extractions: AgreementExtractionResult[]
+  identities: AgreementIdentityResult[]
+  prefetchStatus: PrefetchStatusEntry[]
+}
+export type AnalyzeResultResponsePayload = { type: 'ANALYZE_RESULT'; result: AnalysisResultPayload }
 
 export type ErrorCode =
   | 'MALFORMED_MESSAGE'
@@ -42,6 +56,7 @@ export type ErrorCode =
   | 'TIMEOUT'
   | 'TARGET_UNAVAILABLE'
   | 'INTERNAL_ERROR'
+  | 'ANALYSIS_FAILED'
 
 export type ErrorResponsePayload = { type: 'ERROR'; code: ErrorCode; message: string }
 
@@ -52,6 +67,8 @@ export type ResponsePayload =
   | ExtractionAckResponsePayload
   | IdentityAckResponsePayload
   | PrefetchAckResponsePayload
+  | TabStateResponsePayload
+  | AnalyzeResultResponsePayload
   | ErrorResponsePayload
 
 export type SamjhoRequest = {
@@ -90,7 +107,9 @@ export function isKnownRequestPayloadType(type: string): type is RequestPayload[
     type === 'DISCOVERY_UPDATE' ||
     type === 'EXTRACTION_UPDATE' ||
     type === 'IDENTITY_UPDATE' ||
-    type === 'PREFETCH_REQUEST'
+    type === 'PREFETCH_REQUEST' ||
+    type === 'GET_TAB_STATE' ||
+    type === 'ANALYZE_REQUEST'
   )
 }
 

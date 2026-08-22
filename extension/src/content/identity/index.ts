@@ -1,11 +1,7 @@
 import { sendRequest } from '../../shared/rpc'
 import { computeIdentity } from '../../shared/identity/computeIdentity'
 import type { AgreementExtractionResult } from '../../shared/extractionTypes'
-import { CURRENT_ANALYSIS_VERSION, DEFAULT_LANGUAGE, type AnalysisRequestPayload } from '../../shared/analysisRequestTypes'
-
-function isHighConfidence(extraction: AgreementExtractionResult): boolean {
-  return extraction.confidence === 'high' && extraction.extractionStatus === 'READY'
-}
+import { buildAnalysisRequestPayload, isHighConfidenceExtraction, type AnalysisRequestPayload } from '../../shared/analysisRequestTypes'
 
 export async function handleExtractionResults(results: AgreementExtractionResult[]): Promise<void> {
   if (results.length === 0) return
@@ -19,18 +15,8 @@ export async function handleExtractionResults(results: AgreementExtractionResult
 
   const prefetchRequests: AnalysisRequestPayload[] = results
     .map((extraction, index) => ({ extraction, identity: identities[index] }))
-    .filter(({ extraction }) => isHighConfidence(extraction))
-    .map(({ extraction, identity }) => ({
-      agreementId: identity.agreementId,
-      contentHash: identity.contentHash,
-      sourceType: extraction.sourceType,
-      sourceUrl: extraction.sourceUrl,
-      resolvedUrl: extraction.resolvedUrl,
-      normalizedText: extraction.normalizedText,
-      originalText: extraction.originalText,
-      analysisVersion: CURRENT_ANALYSIS_VERSION,
-      language: DEFAULT_LANGUAGE,
-    }))
+    .filter(({ extraction }) => isHighConfidenceExtraction(extraction))
+    .map(({ extraction, identity }) => buildAnalysisRequestPayload(extraction, identity))
 
   if (prefetchRequests.length === 0) return
 

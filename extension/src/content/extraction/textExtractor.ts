@@ -5,17 +5,17 @@ const EXCLUDED_CLASS_HINTS = ['advert', 'sponsor', 'promo', 'recommend', 'breadc
 const BLOCK_TAGS = new Set(['P', 'LI', 'TR', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'DIV', 'SECTION', 'ARTICLE'])
 export const MAX_EXTRACTED_LENGTH = 20000
 
-function isExcluded(element: Element): boolean {
+function isExcluded(element: Element, styleWindow: Window): boolean {
   if (EXCLUDED_TAGS.has(element.tagName)) return true
   if (isSamjhoOwned(element)) return true
   if (element.getAttribute('aria-hidden') === 'true') return true
-  const style = window.getComputedStyle(element)
+  const style = styleWindow.getComputedStyle(element)
   if (style.display === 'none' || style.visibility === 'hidden') return true
   const classAndId = `${typeof element.className === 'string' ? element.className : ''} ${element.id}`.toLowerCase()
   return EXCLUDED_CLASS_HINTS.some((hint) => classAndId.includes(hint))
 }
 
-export function extractText(root: Element): { text: string; truncated: boolean } {
+export function extractText(root: Element, styleWindow: Window = window): { text: string; truncated: boolean } {
   const parts: string[] = []
   let truncated = false
   let length = 0
@@ -31,7 +31,7 @@ export function extractText(root: Element): { text: string; truncated: boolean }
       }
       return
     }
-    if (!(node instanceof Element) || isExcluded(node)) return
+    if (!(node instanceof Element) || isExcluded(node, styleWindow)) return
     for (const child of Array.from(node.childNodes)) {
       walk(child)
       if (truncated) return

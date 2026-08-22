@@ -8,11 +8,15 @@ const CONTAINER_SELECTORS = [
   'details',
   '[class*="modal" i]',
   '[class*="accordion" i]',
-  'section',
+  'main',
+  '[role="main"]',
   'article',
+  'section',
 ]
 
 const MAX_ANCESTOR_DEPTH = 8
+const MAX_FALLBACK_DEPTH = 20
+const MEANINGFUL_ANCESTOR_TEXT_LENGTH = 400
 
 export function locateContainer(start: Element): ContainerMatch | undefined {
   let current: Element | null = start
@@ -28,7 +32,20 @@ export function locateContainer(start: Element): ContainerMatch | undefined {
 }
 
 export function nearestFallbackContainer(start: Element): Element {
-  return start.closest('form, li, div, section') ?? start.parentElement ?? start
+  let current: Element | null = start.parentElement
+  let depth = 0
+  let best: Element = start.parentElement ?? start
+
+  while (current && depth < MAX_FALLBACK_DEPTH) {
+    best = current
+    const length = (current.textContent ?? '').trim().length
+    if (length >= MEANINGFUL_ANCESTOR_TEXT_LENGTH) return current
+    if (current.tagName === 'BODY') break
+    current = current.parentElement
+    depth++
+  }
+
+  return document.body ?? best
 }
 
 export function classifyContainerSourceType(match: ContainerMatch): AgreementSourceType {

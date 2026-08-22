@@ -12,6 +12,7 @@ import {
   locateContainer,
   nearestFallbackContainer,
 } from './containerLocator'
+import { renderSameOriginUrl } from './renderViaIframe'
 import { extractText, normalizeText } from './textExtractor'
 import { resolveAnchor, resolveHref, type ResolvedLink } from './urlResolution'
 
@@ -27,6 +28,14 @@ type BuildParams = {
   resolved?: ResolvedLink
   container?: Element
   strategy?: string
+}
+
+const MEANINGFUL_EXTRACTED_TEXT_LENGTH = 200
+
+function classifyExtractedText(text: string, truncated: boolean): { confidence: ConfidenceLevel; status: ExtractionStatus } {
+  if (text.length === 0) return { confidence: 'low', status: 'FAILED' }
+  if (text.length < MEANINGFUL_EXTRACTED_TEXT_LENGTH) return { confidence: 'medium', status: 'PARTIAL' }
+  return { confidence: 'high', status: truncated ? 'PARTIAL' : 'READY' }
 }
 
 function buildResult(params: BuildParams): AgreementExtractionResult {
@@ -51,46 +60,27 @@ function buildResult(params: BuildParams): AgreementExtractionResult {
   }
 }
 
-async function extractSameOriginDocument(live: LiveCandidate, resolved: ResolvedLink): Promise<AgreementExtractionResult> {
+async function extractViaFetch(
+  resolved: ResolvedLink,
+): Promise<{ text: string; title: string; truncated: boolean; container?: Element } | undefined> {
   try {
     const response = await fetch(resolved.resolvedUrl!, { credentials: 'same-origin' })
-    if (!response.ok) {
-      return buildResult({
-        live,
-        sourceType: 'sameOriginLink',
-        status: 'FAILED',
-        title: live.matchedText,
-        originalText: '',
-        normalizedText: '',
-        warnings: [`fetch failed with status ${response.status}`],
-        confidence: 'low',
-        resolved,
-      })
-    }
+    if (!response.ok) return undefined
 
     const html = await response.text()
     const parsed = new DOMParser().parseFromString(html, 'text/html')
     const container = parsed.querySelector('main, article, [role="main"]') ?? parsed.body
     const { text, truncated } = extractText(container)
-    const normalized = normalizeText(text)
-    const warnings: string[] = []
-    if (truncated) warnings.push('content truncated at extraction length limit')
-    if (text.length === 0) warnings.push('no extractable text found at resolved URL')
+    return { text, title: parsed.title, truncated, container }
+  } catch {
+    return undefined
+  }
+}
 
-    return buildResult({
-      live,
-      sourceType: 'sameOriginLink',
-      status: text.length === 0 ? 'FAILED' : warnings.length ? 'PARTIAL' : 'READY',
-      title: parsed.title || live.matchedText,
-      originalText: text,
-      normalizedText: normalized,
-      warnings,
-      confidence: text.length === 0 ? 'low' : 'high',
-      resolved,
-      container,
-      strategy: 'fetch:same-origin',
-    })
-  } catch (error) {
+async function extractSameOriginDocument(live: LiveCandidate, resolved: ResolvedLink): Promise<AgreementExtractionResult> {
+  const fetched = await extractViaFetch(resolved)
+
+  if (!fetched) {
     return buildResult({
       live,
       sourceType: 'sameOriginLink',
@@ -98,11 +88,78 @@ async function extractSameOriginDocument(live: LiveCandidate, resolved: Resolved
       title: live.matchedText,
       originalText: '',
       normalizedText: '',
-      warnings: [`fetch threw: ${error instanceof Error ? error.message : 'unknown error'}`],
+      warnings: ['fetching the resolved URL failed or threw an error'],
       confidence: 'low',
       resolved,
     })
   }
+
+  const fetchedClassification = classifyExtractedText(fetched.text, fetched.truncated)
+
+  if (fetchedClassification.confidence === 'high') {
+    const normalized = normalizeText(fetched.text)
+    const warnings: string[] = []
+    if (fetched.truncated) warnings.push('content truncated at extraction length limit')
+
+    return buildResult({
+      live,
+      sourceType: 'sameOriginLink',
+      status: fetchedClassification.status,
+      title: fetched.title || live.matchedText,
+      originalText: fetched.text,
+      normalizedText: normalized,
+      warnings,
+      confidence: 'high',
+      resolved,
+      container: fetched.container,
+      strategy: 'fetch:same-origin',
+    })
+  }
+
+  const rendered = await renderSameOriginUrl(resolved.resolvedUrl!)
+  const renderedClassification = rendered ? classifyExtractedText(rendered.text, false) : undefined
+
+  if (rendered && renderedClassification && renderedClassification.confidence !== 'low' && rendered.text.length > fetched.text.length) {
+    const warnings: string[] = []
+    if (renderedClassification.confidence === 'medium') {
+      warnings.push('extracted text is too short to be confidently treated as the full document')
+    }
+
+    return buildResult({
+      live,
+      sourceType: 'sameOriginLink',
+      status: renderedClassification.status,
+      title: rendered.title || live.matchedText,
+      originalText: rendered.text,
+      normalizedText: rendered.normalizedText,
+      warnings,
+      confidence: renderedClassification.confidence,
+      resolved,
+      strategy: 'render:same-origin-iframe',
+    })
+  }
+
+  const warnings: string[] = []
+  if (fetched.truncated) warnings.push('content truncated at extraction length limit')
+  if (fetched.text.length === 0) warnings.push('no extractable text found at resolved URL')
+  else if (fetchedClassification.confidence === 'medium') {
+    warnings.push('extracted text is too short to be confidently treated as the full document')
+  }
+  if (rendered) warnings.push('attempted rendering the page in a hidden frame, but it did not yield more content')
+
+  return buildResult({
+    live,
+    sourceType: 'sameOriginLink',
+    status: fetchedClassification.status,
+    title: fetched.title || live.matchedText,
+    originalText: fetched.text,
+    normalizedText: normalizeText(fetched.text),
+    warnings,
+    confidence: fetchedClassification.confidence,
+    resolved,
+    container: fetched.container,
+    strategy: 'fetch:same-origin',
+  })
 }
 
 async function extractFromResolvedLink(live: LiveCandidate, resolved: ResolvedLink): Promise<AgreementExtractionResult> {
@@ -134,6 +191,10 @@ async function extractFromResolvedLink(live: LiveCandidate, resolved: ResolvedLi
     })
   }
 
+  if (resolved.isSameOrigin) {
+    return extractSameOriginDocument(live, resolved)
+  }
+
   if (resolved.opensNewTab) {
     return buildResult({
       live,
@@ -142,27 +203,23 @@ async function extractFromResolvedLink(live: LiveCandidate, resolved: ResolvedLi
       title: live.matchedText,
       originalText: '',
       normalizedText: '',
-      warnings: ['target document opens in a new tab and was not fetched from this document context'],
+      warnings: ['target document opens in a new tab on a different origin and was not fetched from this document context'],
       confidence: 'medium',
       resolved,
     })
   }
 
-  if (!resolved.isSameOrigin) {
-    return buildResult({
-      live,
-      sourceType: 'externalLink',
-      status: 'UNRESOLVED',
-      title: live.matchedText,
-      originalText: '',
-      normalizedText: '',
-      warnings: ['cross-origin document not fetched in this module'],
-      confidence: 'medium',
-      resolved,
-    })
-  }
-
-  return extractSameOriginDocument(live, resolved)
+  return buildResult({
+    live,
+    sourceType: 'externalLink',
+    status: 'UNRESOLVED',
+    title: live.matchedText,
+    originalText: '',
+    normalizedText: '',
+    warnings: ['cross-origin document not fetched in this module'],
+    confidence: 'medium',
+    resolved,
+  })
 }
 
 function extractSamePage(live: LiveCandidate): AgreementExtractionResult {
@@ -172,38 +229,43 @@ function extractSamePage(live: LiveCandidate): AgreementExtractionResult {
     const fallback = nearestFallbackContainer(live.element)
     const { text, truncated } = extractText(fallback)
     const normalized = normalizeText(text)
-    const warnings = ['no precise container found; used nearest bounded ancestor']
+    const { confidence, status } = classifyExtractedText(text, truncated)
+    const warnings = ['no semantic container found; used the nearest ancestor with substantial text']
     if (truncated) warnings.push('content truncated at extraction length limit')
+    if (confidence === 'medium') warnings.push('extracted text is too short to be confidently treated as the full document')
+
     return buildResult({
       live,
       sourceType: 'samePage',
-      status: text.length ? 'PARTIAL' : 'FAILED',
+      status,
       title: live.matchedText,
       originalText: text,
       normalizedText: normalized,
       warnings,
-      confidence: 'low',
+      confidence,
       container: fallback,
-      strategy: 'fallback:nearest-ancestor',
+      strategy: 'fallback:nearest-substantial-ancestor',
     })
   }
 
   const sourceType = classifyContainerSourceType(containerMatch)
   const { text, truncated } = extractText(containerMatch.element)
   const normalized = normalizeText(text)
+  const { confidence, status } = classifyExtractedText(text, truncated)
   const warnings: string[] = []
   if (truncated) warnings.push('content truncated at extraction length limit')
   if (text.length === 0) warnings.push('container had no extractable text')
+  else if (confidence === 'medium') warnings.push('extracted text is too short to be confidently treated as the full document')
 
   return buildResult({
     live,
     sourceType,
-    status: text.length === 0 ? 'FAILED' : warnings.length ? 'PARTIAL' : 'READY',
+    status,
     title: live.matchedText,
     originalText: text,
     normalizedText: normalized,
     warnings,
-    confidence: text.length === 0 ? 'low' : 'high',
+    confidence,
     container: containerMatch.element,
     strategy: containerMatch.strategy,
   })

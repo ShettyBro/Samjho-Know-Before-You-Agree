@@ -19,13 +19,19 @@ export function createGeminiProvider(analyzeChunk: (chunkText: string) => Promis
     async analyze(request: AnalysisRequest) {
       const { chunks, truncated } = splitForProcessing(request.normalizedText)
 
-      const chunkResults: GeminiContentPayload[] = []
+      const perChunkResults = await Promise.all(
+        chunks.map(async (chunkText) => {
+          const raw = await analyzeChunk(chunkText)
+          const { items, droppedCount } = filterGroundedItems(raw.attentionItems, chunkText)
+          return { summary: raw.summary, attentionItems: items, droppedCount }
+        }),
+      )
+
       let totalDropped = 0
-      for (const chunkText of chunks) {
-        const raw = await analyzeChunk(chunkText)
-        const { items, droppedCount } = filterGroundedItems(raw.attentionItems, chunkText)
-        totalDropped += droppedCount
-        chunkResults.push({ summary: raw.summary, attentionItems: items })
+      const chunkResults: GeminiContentPayload[] = []
+      for (const result of perChunkResults) {
+        totalDropped += result.droppedCount
+        chunkResults.push({ summary: result.summary, attentionItems: result.attentionItems })
       }
 
       const merged = mergeChunkResults(chunkResults)

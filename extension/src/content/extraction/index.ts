@@ -8,7 +8,7 @@ const inFlight = new Set<string>()
 
 function shouldSkip(previous: AgreementExtractionResult | undefined): boolean {
   if (!previous) return false
-  if (previous.extractionStatus === 'READY') return true
+  if (previous.extractionStatus === 'READY' || previous.extractionStatus === 'PARTIAL') return true
   return previous.sourceType === 'pdf' || previous.sourceType === 'newTabLink' || previous.sourceType === 'externalLink'
 }
 
