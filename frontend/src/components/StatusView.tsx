@@ -1,7 +1,9 @@
 import React from 'react'
+import { motion, useReducedMotion } from 'framer-motion'
 import type { SupportedLanguage } from '../api/types.js'
 import { UI_TEXT } from '../uiText.js'
 import type { AnalysisState } from '../state/analysisTypes.js'
+import { LoadingIndicator } from './LoadingIndicator.js'
 
 export function StatusView({
   state,
@@ -13,6 +15,7 @@ export function StatusView({
   onRetry: () => void
 }) {
   const text = UI_TEXT[language]
+  const reduceMotion = useReducedMotion()
 
   if (state.kind === 'IDLE') return null
 
@@ -46,13 +49,16 @@ export function StatusView({
           : text.statusPrefetching
 
   return (
-    <div className="samjho-status" role="status" aria-live="polite">
-      <span className="samjho-loading" aria-hidden="true">
-        <span className="samjho-loading__dot" />
-        <span className="samjho-loading__dot" />
-        <span className="samjho-loading__dot" />
-      </span>
+    <motion.div
+      className="samjho-status"
+      role="status"
+      aria-live="polite"
+      initial={reduceMotion ? false : { opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.2 }}
+    >
+      <LoadingIndicator />
       <p className="samjho-status__body">{heading}</p>
-    </div>
+    </motion.div>
   )
 }

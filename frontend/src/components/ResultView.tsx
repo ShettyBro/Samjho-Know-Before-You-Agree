@@ -1,4 +1,5 @@
 import React from 'react'
+import { motion, useReducedMotion } from 'framer-motion'
 import type { AnalysisResultPayload, AttentionItemPayload, SupportedLanguage } from '../api/types.js'
 import { UI_TEXT } from '../uiText.js'
 
@@ -54,6 +55,7 @@ function AttentionItemCard({ item, sourceLabel }: { item: AttentionItemPayload; 
 
 export function ResultView({ result, language }: { result: AnalysisResultPayload; language: SupportedLanguage }) {
   const text = UI_TEXT[language]
+  const reduceMotion = useReducedMotion()
   const sortedItems = [...result.attentionItems].sort((a, b) => IMPORTANCE_RANK[a.importance] - IMPORTANCE_RANK[b.importance])
 
   const sectionKeys: (keyof AnalysisResultPayload)[] = [
@@ -69,7 +71,12 @@ export function ResultView({ result, language }: { result: AnalysisResultPayload
     .filter(({ section }) => section.available)
 
   return (
-    <div className="samjho-result">
+    <motion.div
+      className="samjho-result"
+      initial={reduceMotion ? false : { opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.28 }}
+    >
       <p className="samjho-ready__status" role="status">
         {text.statusReady}
       </p>
@@ -131,6 +138,6 @@ export function ResultView({ result, language }: { result: AnalysisResultPayload
       <footer className="samjho-disclaimer" role="note">
         <p>{result.disclaimer || text.disclaimerFallback}</p>
       </footer>
-    </div>
+    </motion.div>
   )
 }

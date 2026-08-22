@@ -5,9 +5,12 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import type { AnalysisResultPayload } from '../api/types.js'
 import type { AnalysisState } from '../state/analysisTypes.js'
 import { AnalyzeInput } from './AnalyzeInput.js'
+import { AuthModal } from './AuthModal.js'
 import { AuthPanel } from './AuthPanel.js'
 import { Header } from './Header.js'
+import { HistoryModal } from './HistoryModal.js'
 import { LanguageTabs } from './LanguageTabs.js'
+import { Navbar } from './Navbar.js'
 import { ResultView } from './ResultView.js'
 import { StatusView } from './StatusView.js'
 
@@ -157,4 +160,103 @@ test('derived sections with no available content are hidden entirely', () => {
   const markup = renderToStaticMarkup(<ResultView result={baseResult()} language="en" />)
   assert.ok(markup.includes('Automatic renewal'))
   assert.ok(!markup.includes('Data sharing'))
+})
+
+test('the navbar shows the brand name and a log in button when signed out', () => {
+  const markup = renderToStaticMarkup(
+    <Navbar
+      language="en"
+      onLanguageChange={() => undefined}
+      user={null}
+      authPending={false}
+      authError={null}
+      onLogin={async () => true}
+      onRegister={async () => true}
+      onLogout={async () => undefined}
+      onOpenHistory={() => undefined}
+    />,
+  )
+  assert.ok(markup.includes('Samjho'))
+  assert.ok(markup.includes('Log in'))
+})
+
+test('the navbar shows the signed-in email and a logout button when a user is present', () => {
+  const markup = renderToStaticMarkup(
+    <Navbar
+      language="en"
+      onLanguageChange={() => undefined}
+      user={{ id: 'usr_1', email: 'user@example.com', createdAt: '2024-01-01T00:00:00.000Z' }}
+      authPending={false}
+      authError={null}
+      onLogin={async () => true}
+      onRegister={async () => true}
+      onLogout={async () => undefined}
+      onOpenHistory={() => undefined}
+    />,
+  )
+  assert.ok(markup.includes('user@example.com'))
+  assert.ok(markup.includes('Log out'))
+})
+
+test('the history modal shows history and saved items, marking a version change', () => {
+  const markup = renderToStaticMarkup(
+    <HistoryModal
+      language="en"
+      historyItems={[
+        {
+          agreementId: 'agr:a',
+          contentHash: 'sha256:h2',
+          analysisVersion: 'v1',
+          title: 'Terms of Service',
+          analyzedAt: '2024-02-01T00:00:00.000Z',
+          changed: true,
+          previousContentHash: 'sha256:h1',
+          previousAnalyzedAt: '2024-01-01T00:00:00.000Z',
+        },
+      ]}
+      savedItems={[]}
+      openResult={null}
+      onOpenHistoryItem={() => undefined}
+      onOpenSavedItem={() => undefined}
+      onUnsave={() => undefined}
+      onCloseResult={() => undefined}
+      onClose={() => undefined}
+    />,
+  )
+  assert.ok(markup.includes('Terms of Service'))
+  assert.ok(markup.includes('Agreement updated'))
+})
+
+test('the history modal shows an empty saved message with no saved agreements', () => {
+  const markup = renderToStaticMarkup(
+    <HistoryModal
+      language="en"
+      historyItems={[]}
+      savedItems={[]}
+      openResult={null}
+      onOpenHistoryItem={() => undefined}
+      onOpenSavedItem={() => undefined}
+      onUnsave={() => undefined}
+      onCloseResult={() => undefined}
+      onClose={() => undefined}
+    />,
+  )
+  assert.ok(markup.includes('No agreements analyzed yet.'))
+})
+
+test('the auth modal renders as a labeled dialog with the auth panel inside', () => {
+  const markup = renderToStaticMarkup(
+    <AuthModal
+      language="en"
+      user={null}
+      pending={false}
+      error={null}
+      onLogin={async () => true}
+      onRegister={async () => true}
+      onLogout={async () => undefined}
+      onClose={() => undefined}
+    />,
+  )
+  assert.ok(markup.includes('Log in'))
+  assert.ok(markup.includes('Create account'))
 })

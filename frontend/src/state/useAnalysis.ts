@@ -3,7 +3,7 @@ import { analyzePastedText, analyzePdf } from '../api/analyze.js'
 import type { SupportedLanguage } from '../api/types.js'
 import type { AnalysisState } from './analysisTypes.js'
 
-const MAX_TEXT_LENGTH = 50000
+const MAX_TEXT_LENGTH = 200000
 const MAX_PDF_BYTES = 8 * 1024 * 1024
 
 export function useAnalysis(language: SupportedLanguage, uiText: { pasteEmptyError: string; pasteTooLongError: string; pdfWrongTypeError: string; pdfTooLargeError: string }) {

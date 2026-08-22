@@ -1,9 +1,10 @@
 import { Router } from 'express'
 import { answerChatQuestion } from '../chat/service.js'
+import { limitAiRequests } from '../middleware/aiRateLimiter.js'
 
 export const chatRouter = Router()
 
-chatRouter.post('/api/v1/agreements/chat', async (req, res, next) => {
+chatRouter.post('/api/v1/agreements/chat', limitAiRequests, async (req, res, next) => {
   const startedAt = Date.now()
   const result = await answerChatQuestion(req.body)
   const elapsedMs = Date.now() - startedAt

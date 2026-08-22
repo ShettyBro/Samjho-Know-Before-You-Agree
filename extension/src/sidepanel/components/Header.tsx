@@ -5,9 +5,7 @@ import { UI_TEXT } from '../uiText'
 export function Header({ language }: { language: SupportedLanguage }) {
   return (
     <header className="samjho-header">
-      <div className="samjho-header__mark" aria-hidden="true">
-        S
-      </div>
+      <img src="/samjho-logo.png" alt="" className="samjho-header__mark" />
       <div>
         <h1 className="samjho-header__title">Samjho</h1>
         <p className="samjho-header__tagline">{UI_TEXT[language].tagline}</p>

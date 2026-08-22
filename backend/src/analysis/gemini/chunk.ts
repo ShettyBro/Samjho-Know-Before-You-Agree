@@ -1,5 +1,5 @@
 export const MAX_CHUNK_CHARS = 8000
-export const MAX_CHUNKS = 5
+export const MAX_CHUNKS = 12
 
 function splitParagraphs(text: string, maxChunkChars: number): string[] {
   const paragraphs = text.split(/\n{2,}/)

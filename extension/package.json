@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.test.json",
-    "test": "node --import tsx --test src/shared/*.test.ts src/shared/identity/*.test.ts src/background/*.test.ts src/sidepanel/state/*.test.ts src/sidepanel/components/*.test.tsx src/content/popup/*.test.ts src/content/popup/*.test.tsx"
+    "test": "node --import tsx --test src/shared/*.test.ts src/shared/identity/*.test.ts src/background/*.test.ts src/sidepanel/state/*.test.ts src/sidepanel/components/*.test.tsx src/content/popup/*.test.ts src/content/popup/*.test.tsx src/content/discovery/*.test.ts"
   },
   "dependencies": {
     "framer-motion": "^12.4.10",
@@ -17,10 +17,12 @@
   "devDependencies": {
     "@crxjs/vite-plugin": "^2.7.1",
     "@types/chrome": "^0.2.6",
+    "@types/jsdom": "^30.0.0",
     "@types/node": "^24.13.3",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^4.3.4",
+    "jsdom": "^30.0.1",
     "tsx": "^4.19.2",
     "typescript": "~6.0.2",
     "vite": "^5.4.21"

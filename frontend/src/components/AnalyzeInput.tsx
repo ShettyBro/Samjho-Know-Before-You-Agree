@@ -1,4 +1,5 @@
 import React, { useRef, useState } from 'react'
+import { motion, useReducedMotion } from 'framer-motion'
 import type { SupportedLanguage } from '../api/types.js'
 import { UI_TEXT } from '../uiText.js'
 
@@ -14,13 +15,19 @@ export function AnalyzeInput({
   onSubmitPdf: (file: File) => void
 }) {
   const text = UI_TEXT[language]
+  const reduceMotion = useReducedMotion()
   const [mode, setMode] = useState<'paste' | 'pdf'>('paste')
   const [draft, setDraft] = useState('')
   const [selectedFileName, setSelectedFileName] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   return (
-    <div className="samjho-analyze-input">
+    <motion.div
+      className="samjho-analyze-input samjho-glass"
+      initial={reduceMotion ? false : { opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.25 }}
+    >
       <div className="samjho-analyze-input__tabs" role="tablist">
         <button
           type="button"
@@ -105,6 +112,6 @@ export function AnalyzeInput({
           </button>
         </div>
       )}
-    </div>
+    </motion.div>
   )
 }

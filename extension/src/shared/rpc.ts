@@ -24,27 +24,43 @@ export function sendRequest(
       })
     }, timeoutMs)
 
-    chrome.runtime.sendMessage(message, (response: SamjhoResponse | undefined) => {
+    try {
+      chrome.runtime.sendMessage(message, (response: SamjhoResponse | undefined) => {
+        if (settled) return
+        settled = true
+        clearTimeout(timer)
+
+        if (chrome.runtime.lastError || response === undefined) {
+          resolve({
+            kind: 'response',
+            requestId,
+            ok: false,
+            payload: {
+              type: 'ERROR',
+              code: 'TARGET_UNAVAILABLE',
+              message: chrome.runtime.lastError?.message ?? 'No response received',
+            },
+          })
+          return
+        }
+
+        resolve(response)
+      })
+    } catch (error) {
       if (settled) return
       settled = true
       clearTimeout(timer)
-
-      if (chrome.runtime.lastError || response === undefined) {
-        resolve({
-          kind: 'response',
-          requestId,
-          ok: false,
-          payload: {
-            type: 'ERROR',
-            code: 'TARGET_UNAVAILABLE',
-            message: chrome.runtime.lastError?.message ?? 'No response received',
-          },
-        })
-        return
-      }
-
-      resolve(response)
-    })
+      resolve({
+        kind: 'response',
+        requestId,
+        ok: false,
+        payload: {
+          type: 'ERROR',
+          code: 'TARGET_UNAVAILABLE',
+          message: error instanceof Error ? error.message : 'Extension context is no longer available',
+        },
+      })
+    }
   })
 }
 
@@ -58,12 +74,19 @@ export function sendRawMessage(message: unknown, timeoutMs: number = DEFAULT_TIM
       resolve(undefined)
     }, timeoutMs)
 
-    chrome.runtime.sendMessage(message, (response: unknown) => {
+    try {
+      chrome.runtime.sendMessage(message, (response: unknown) => {
+        if (settled) return
+        settled = true
+        clearTimeout(timer)
+        void chrome.runtime.lastError
+        resolve(response)
+      })
+    } catch {
       if (settled) return
       settled = true
       clearTimeout(timer)
-      void chrome.runtime.lastError
-      resolve(response)
-    })
+      resolve(undefined)
+    }
   })
 }

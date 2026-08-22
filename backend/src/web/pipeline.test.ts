@@ -1,5 +1,6 @@
 import { strict as assert } from 'node:assert'
 import { test } from 'node:test'
+import { MAX_CONTENT_LENGTH } from '../analysis/limits.js'
 import type { AgreementAnalysisProvider } from '../analysis/provider.js'
 import type { AnalysisRequest } from '../analysis/types.js'
 import { InMemoryAnalysisCache } from '../cache/AnalysisCache.js'
@@ -89,7 +90,7 @@ test('oversized pasted text is rejected with a PAYLOAD_TOO_LARGE error', async (
   const { provider, callCount } = createFakeProvider()
   const service = createCachedAnalysisService({ cache: new InMemoryAnalysisCache(50), provider, ttlMs: 60000 })
 
-  const oversizedText = 'a'.repeat(60000)
+  const oversizedText = 'a'.repeat(MAX_CONTENT_LENGTH + 1)
   const result = await analyzeWebSubmission({ text: oversizedText, sourceType: 'pastedText', language: 'en' }, service)
   assert.equal(result.ok, false)
   if (!result.ok) assert.equal(result.error.code, 'PAYLOAD_TOO_LARGE')

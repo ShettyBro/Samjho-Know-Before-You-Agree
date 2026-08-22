@@ -44,6 +44,20 @@ export type UiText = {
   loggedInAs: string
   authLoading: string
   guestNotice: string
+  historyNavButton: string
+  historyModalHeading: string
+  historyTab: string
+  savedTab: string
+  historyEmpty: string
+  savedEmpty: string
+  openButton: string
+  removeButton: string
+  saveButton: string
+  savedIndicator: string
+  changedIndicator: string
+  analyzedLabel: string
+  savedAtLabel: string
+  backButton: string
 }
 
 export const UI_TEXT: Record<SupportedLanguage, UiText> = {
@@ -91,6 +105,20 @@ export const UI_TEXT: Record<SupportedLanguage, UiText> = {
     loggedInAs: 'Signed in as',
     authLoading: 'Please wait…',
     guestNotice: 'You can analyze agreements as a guest. Sign in only if you want an account.',
+    historyNavButton: 'History',
+    historyModalHeading: 'History & saved agreements',
+    historyTab: 'History',
+    savedTab: 'Saved',
+    historyEmpty: 'No agreements analyzed yet.',
+    savedEmpty: 'No saved agreements yet.',
+    openButton: 'Open',
+    removeButton: 'Remove',
+    saveButton: 'Save',
+    savedIndicator: 'Saved',
+    changedIndicator: 'Agreement updated',
+    analyzedLabel: 'Analyzed',
+    savedAtLabel: 'Saved',
+    backButton: 'Back',
   },
   kn: {
     tagline: 'ಒಪ್ಪುವ ಮೊದಲು ತಿಳಿಯಿರಿ',
@@ -140,6 +168,20 @@ export const UI_TEXT: Record<SupportedLanguage, UiText> = {
     loggedInAs: 'ಸೈನ್ ಇನ್ ಆಗಿದೆ',
     authLoading: 'ದಯವಿಟ್ಟು ನಿರೀಕ್ಷಿಸಿ…',
     guestNotice: 'ನೀವು ಅತಿಥಿಯಾಗಿ ಒಪ್ಪಂದಗಳನ್ನು ವಿಶ್ಲೇಷಿಸಬಹುದು. ಖಾತೆ ಬೇಕಾದರೆ ಮಾತ್ರ ಸೈನ್ ಇನ್ ಮಾಡಿ.',
+    historyNavButton: 'ಇತಿಹಾಸ',
+    historyModalHeading: 'ಇತಿಹಾಸ ಮತ್ತು ಉಳಿಸಿದ ಒಪ್ಪಂದಗಳು',
+    historyTab: 'ಇತಿಹಾಸ',
+    savedTab: 'ಉಳಿಸಲಾಗಿದೆ',
+    historyEmpty: 'ಇನ್ನೂ ಯಾವುದೇ ಒಪ್ಪಂದವನ್ನು ವಿಶ್ಲೇಷಿಸಿಲ್ಲ.',
+    savedEmpty: 'ಇನ್ನೂ ಯಾವುದೇ ಒಪ್ಪಂದವನ್ನು ಉಳಿಸಿಲ್ಲ.',
+    openButton: 'ತೆರೆಯಿರಿ',
+    removeButton: 'ತೆಗೆದುಹಾಕಿ',
+    saveButton: 'ಉಳಿಸಿ',
+    savedIndicator: 'ಉಳಿಸಲಾಗಿದೆ',
+    changedIndicator: 'ಒಪ್ಪಂದ ನವೀಕರಿಸಲಾಗಿದೆ',
+    analyzedLabel: 'ವಿಶ್ಲೇಷಿಸಲಾಗಿದೆ',
+    savedAtLabel: 'ಉಳಿಸಲಾಗಿದೆ',
+    backButton: 'ಹಿಂದೆ',
   },
   hi: {
     tagline: 'सहमत होने से पहले समझें',
@@ -189,5 +231,19 @@ export const UI_TEXT: Record<SupportedLanguage, UiText> = {
     loggedInAs: 'साइन इन किया गया',
     authLoading: 'कृपया प्रतीक्षा करें…',
     guestNotice: 'आप अतिथि के रूप में समझौतों का विश्लेषण कर सकते हैं। खाता चाहिए तो ही साइन इन करें।',
+    historyNavButton: 'इतिहास',
+    historyModalHeading: 'इतिहास और सहेजे गए समझौते',
+    historyTab: 'इतिहास',
+    savedTab: 'सहेजे गए',
+    historyEmpty: 'अभी तक कोई समझौता विश्लेषित नहीं किया गया।',
+    savedEmpty: 'अभी तक कोई समझौता सहेजा नहीं गया।',
+    openButton: 'खोलें',
+    removeButton: 'हटाएं',
+    saveButton: 'सहेजें',
+    savedIndicator: 'सहेजा गया',
+    changedIndicator: 'समझौता अपडेट हुआ',
+    analyzedLabel: 'विश्लेषित',
+    savedAtLabel: 'सहेजा गया',
+    backButton: 'वापस',
   },
 }

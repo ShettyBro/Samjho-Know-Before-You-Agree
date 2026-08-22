@@ -5,8 +5,20 @@ export default defineManifest({
   name: 'Samjho — Know Before You Agree',
   version: '0.0.1',
   description: 'Understand consent agreements before you agree to them.',
+  icons: {
+    16: 'icons/icon-16.png',
+    32: 'icons/icon-32.png',
+    48: 'icons/icon-48.png',
+    128: 'icons/icon-128.png',
+  },
   action: {
     default_title: 'Samjho',
+    default_icon: {
+      16: 'icons/icon-16.png',
+      32: 'icons/icon-32.png',
+      48: 'icons/icon-48.png',
+      128: 'icons/icon-128.png',
+    },
   },
   background: {
     service_worker: 'src/background/index.ts',

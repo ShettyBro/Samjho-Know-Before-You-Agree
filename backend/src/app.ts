@@ -6,6 +6,7 @@ import { errorHandler, notFoundHandler } from './middleware/errorHandler.js'
 import { analyzeRouter } from './routes/analyze.js'
 import { chatRouter } from './routes/chat.js'
 import { healthRouter } from './routes/health.js'
+import { historyRouter } from './routes/history.js'
 import { prefetchRouter } from './routes/prefetch.js'
 import { webAnalyzeRouter } from './routes/webAnalyze.js'
 
@@ -21,6 +22,7 @@ export function createApp() {
   app.use(chatRouter)
   app.use(authRouter)
   app.use(webAnalyzeRouter)
+  app.use(historyRouter)
 
   app.use(notFoundHandler)
   app.use(errorHandler)
